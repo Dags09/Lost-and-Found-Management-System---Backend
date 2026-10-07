@@ -16,4 +16,34 @@ public class DropOrClaimed {
 
     @NotBlank(message = "Required contact number who to be claimed")
     private String contact;
+
+    public DropOrClaimed(){}
+
+    //getters
+
+    public ObjectId getId() {
+        return id;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public String getContact() {
+        return contact;
+    }
+
+    //setters
+
+    public void setId(ObjectId id) {
+        this.id = id;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public void setContact(String contact) {
+        this.contact = contact;
+    }
 }
