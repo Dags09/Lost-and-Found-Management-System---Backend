@@ -19,30 +19,25 @@ public class DropOrClaimed {
 
     public DropOrClaimed(){}
 
-    //getters
+    // Getters & Setters
 
     public ObjectId getId() {
         return id;
+    }
+    public void setId(ObjectId id) {
+        this.id = id;
     }
 
     public String getName() {
         return name;
     }
-
-    public String getContact() {
-        return contact;
-    }
-
-    //setters
-
-    public void setId(ObjectId id) {
-        this.id = id;
-    }
-
     public void setName(String name) {
         this.name = name;
     }
 
+    public String getContact() {
+        return contact;
+    }
     public void setContact(String contact) {
         this.contact = contact;
     }

@@ -1,6 +1,7 @@
 package com.lostandfound.backend.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.lostandfound.backend.models.enumRoleStatusTypes.Role;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -50,31 +51,38 @@ public class Users {
 
     public Users(){}
 
-    // Getters
+    // Getters & Setters
     public ObjectId getId(){ return id; }
-    public String getFirstName(){ return firstName; }
-    public String getLastName(){ return lastName; }
-    public Integer getStudentId(){ return studentId; }
-    public String getEmail(){ return email; }
-    public String getPhoneNum(){ return phoneNum; }
-    public String getPassword(){ return password; }
-    public Role getRole(){ return role; }
-    public Instant getCreatedAt(){ return createdAt; }
-
-    // Setters
     public void setId(ObjectId id){ this.id = id; }
+
+    public String getFirstName(){ return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
+
+    public String getLastName(){ return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
+
+    public Integer getStudentId(){ return studentId; }
     public void setStudentId(Integer studentId) { this.studentId = studentId; }
+
+    public String getEmail(){ return email; }
     public void setEmail(String email) { this.email = email; }
+
+    public String getPhoneNum(){ return phoneNum; }
     public void setPhoneNum(String phoneNum) { this.phoneNum = phoneNum; }
+
+    public String getPassword(){ return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public Role getRole(){ return role; }
     public void setRole(Role role) { this.role = role; }
+
+    public Instant getCreatedAt(){ return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 
 
     // Validation Conditions
 
+    //only users that has a role of student are required to put a student id
     @JsonIgnore
     @AssertTrue(message = "Student ID is required for Student accounts")
     public boolean isStudentIdValidForRole() {
