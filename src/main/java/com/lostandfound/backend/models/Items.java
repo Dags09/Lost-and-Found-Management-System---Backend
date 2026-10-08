@@ -1,9 +1,9 @@
 package com.lostandfound.backend.models;
 
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
+import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
 import jakarta.validation.constraints.NotBlank;
 import org.bson.types.ObjectId;
-import org.springframework.boot.configurationprocessor.metadata.ItemMetadata;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -30,7 +30,7 @@ public class Items {
 
     @NotBlank(message = "Required item type")
     @Indexed
-    private ItemMetadata.ItemType type;
+    private ItemType type;
 
     @NotBlank(message = "Required description for the item")
     @TextIndexed
@@ -78,10 +78,10 @@ public class Items {
     public void setReporterId(String reporterId) { this.reporterId = reporterId; }
 
 
-    public ItemMetadata.ItemType getType() {
+    public ItemType getType() {
         return type;
     }
-    public void setType(ItemMetadata.ItemType type) {
+    public void setType(ItemType type) {
         this.type = type;
     }
 
