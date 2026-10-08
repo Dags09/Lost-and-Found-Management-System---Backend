@@ -1,12 +1,12 @@
 package com.lostandfound.backend.models;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lostandfound.backend.models.enumRoleStatusTypes.Role;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import org.bson.types.ObjectId;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
@@ -18,7 +18,7 @@ import java.time.Instant;
 public class Users {
 
     @Id
-    private ObjectId id;
+    private String id;
 
     @NotBlank(message = "First name is required")
     private String firstName;
@@ -40,6 +40,7 @@ public class Users {
     private String phoneNum;
 
     @NotBlank(message = "Password is required")
+    @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
     private String password;
 
 
@@ -47,13 +48,13 @@ public class Users {
     private Role role = Role.Student;
 
     @CreatedDate
-    private Instant createdAt = Instant.now();
+    private Instant createdAt;
 
     public Users(){}
 
     // Getters & Setters
-    public ObjectId getId(){ return id; }
-    public void setId(ObjectId id){ this.id = id; }
+    public String getId(){ return id; }
+    public void setId(String id){ this.id = id; }
 
     public String getFirstName(){ return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }

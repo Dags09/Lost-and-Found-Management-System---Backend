@@ -3,7 +3,7 @@ package com.lostandfound.backend.models;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
 import jakarta.validation.constraints.NotBlank;
-import org.bson.types.ObjectId;
+import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -20,15 +20,16 @@ import java.util.List;
 public class Items {
 
     @Id
-    private ObjectId id;
+    private String id;
 
     @Indexed
     private String reporterId;
 
     @NotBlank(message = "Required name for the item")
+    @TextIndexed(weight = 2)
     private String name;
 
-    @NotBlank(message = "Required item type")
+    @NotNull(message = "Required item type")
     @Indexed
     private ItemType type;
 
@@ -70,8 +71,8 @@ public class Items {
 
     // Getters & Setters
 
-    public ObjectId getId() { return id; }
-    public void setId(ObjectId id) { this.id = id; }
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
 
 
     public String getReporterId() { return reporterId; }

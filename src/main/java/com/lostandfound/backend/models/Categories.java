@@ -1,7 +1,6 @@
 package com.lostandfound.backend.models;
 
 import jakarta.validation.constraints.NotBlank;
-import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -10,7 +9,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 @Document(collection = "categories")
 public class Categories {
     @Id
-    private ObjectId id;
+    private String id;
 
     @NotBlank(message = "Category name is required")
     @Indexed(unique = true)
@@ -24,10 +23,10 @@ public class Categories {
 
     // Getters & Setters
 
-    public ObjectId getId(){
+    public String getId(){
         return id;
     }
-    public void setId(ObjectId id) {
+    public void setId(String id) {
         this.id = id;
     }
 

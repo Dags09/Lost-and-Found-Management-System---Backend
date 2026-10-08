@@ -24,7 +24,7 @@ public class Notification {
     /** Free-form data, e.g. {"itemId": "...", "matchId": "..."}. */
     private Map<String, Object> payload;
 
-    private boolean isRead = false;
+    private boolean read = false;
 
     @CreatedDate
     private Instant createdAt;
@@ -43,8 +43,8 @@ public class Notification {
     public Map<String, Object> getPayload() { return payload; }
     public void setPayload(Map<String, Object> payload) { this.payload = payload; }
 
-    public boolean isRead() { return isRead; }
-    public void setRead(boolean isRead) { this.isRead = isRead; }
+    public boolean isRead() { return read; }
+    public void setRead(boolean read) { this.read = read; }
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

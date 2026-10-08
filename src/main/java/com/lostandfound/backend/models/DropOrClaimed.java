@@ -1,7 +1,6 @@
 package com.lostandfound.backend.models;
 
 import jakarta.validation.constraints.NotBlank;
-import org.bson.types.ObjectId;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
@@ -9,7 +8,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class DropOrClaimed {
 
     @Id
-    private ObjectId id;
+    private String id;
 
     @NotBlank(message = "Required Name of the Place")
     private String name;
@@ -21,10 +20,10 @@ public class DropOrClaimed {
 
     // Getters & Setters
 
-    public ObjectId getId() {
+    public String getId() {
         return id;
     }
-    public void setId(ObjectId id) {
+    public void setId(String id) {
         this.id = id;
     }
 

@@ -19,7 +19,6 @@ public class Match {
     @Indexed
     private String foundItemId;
 
-    /** Similarity score, 0 to 1. */
     private double score;
 
     private MatchStatus status = MatchStatus.SUGGESTED;
@@ -28,6 +27,9 @@ public class Match {
     private Instant createdAt;
 
     public Match() {}
+
+
+    // Getters & Setters
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
