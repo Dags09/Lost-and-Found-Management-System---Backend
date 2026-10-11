@@ -50,11 +50,11 @@ public class SecurityConfig {
                 //STATELESS the server doesn’t remember logins. Each request must carry its own token (JWT).
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/api/auth/me").authenticated()
-                        .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("Admin")
-                        .requestMatchers("/api/moderation/**").hasAnyRole("Moderator", "Admin")
+                        .requestMatchers("/v1/auth/me").authenticated()
+                        .requestMatchers("/v1/auth/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/v1/categories/**").permitAll()
+                        .requestMatchers("/v1/admin/**").hasRole("Admin")
+                        .requestMatchers("/v1/moderation/**").hasAnyRole("Moderator", "Admin")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

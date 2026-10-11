@@ -8,7 +8,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/v1/auth")
 public class AuthController {
 
     private final AuthService auth;
@@ -32,8 +32,7 @@ public class AuthController {
     public AuthResponse refresh(@Valid @RequestBody RefreshRequest req) {
         return auth.refresh(req);
     }
-
-    /** Requires a valid access token (this path is under /api/auth but we protect it via the check below). */
+    
     @GetMapping("/me")
     public UserResponse me(Authentication authentication) {
         if (authentication == null) throw new com.lostandfound.backend.exception.ApiException(HttpStatus.UNAUTHORIZED, "Not logged in");
