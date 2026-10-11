@@ -16,6 +16,7 @@ public record ItemPublicResponse(
         String color,
         String brand,
         String locationName,
+        String dropLocationId,
         LocalDate dateOccurred,
         ItemStatus status,
         Instant createdAt
@@ -24,6 +25,7 @@ public record ItemPublicResponse(
         return new ItemPublicResponse(
                 i.getId(), i.getName(), i.getType(), i.getDescription(),
                 i.getCategoryId(), i.getColor(), i.getBrand(),
-                i.getLocationName(), i.getDateOccurred(), i.getStatus(), i.getCreatedAt());
+                i.getLocationName(), i.getDropLocationId(), i.getDateOccurred(),
+                i.getStatus(), i.getCreatedAt());
     }
 }

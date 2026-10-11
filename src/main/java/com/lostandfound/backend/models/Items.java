@@ -53,6 +53,9 @@ public class Items {
     @NotBlank(message = "Required location where it found")
     private String locationName;
 
+    @Indexed
+    private String dropLocationId;
+
     private LocalDate dateOccurred;
 
 
@@ -137,6 +140,10 @@ public class Items {
     public void setLocationName(String locationName) {
         this.locationName = locationName;
     }
+
+
+    public String getDropLocationId() { return dropLocationId; }
+    public void setDropLocationId(String dropLocationId) { this.dropLocationId = dropLocationId; }
 
 
     public LocalDate getDateOccurred() {
