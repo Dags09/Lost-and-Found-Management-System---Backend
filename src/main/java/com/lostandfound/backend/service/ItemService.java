@@ -2,6 +2,7 @@ package com.lostandfound.backend.service;
 
 import com.lostandfound.backend.dto.ItemCreateRequest;
 import com.lostandfound.backend.dto.ItemPublicResponse;
+import com.lostandfound.backend.dto.MyItemResponse;
 import com.lostandfound.backend.exception.ApiException;
 import com.lostandfound.backend.models.Items;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
@@ -53,6 +54,19 @@ public class ItemService {
         return items.findByStatusOrderByCreatedAtDesc(ItemStatus.OPEN)
                 .stream()
                 .map(ItemPublicResponse::from)
+                .toList();
+    }
+
+    public ItemPublicResponse getPublic(String id) {
+        return items.findById(id)
+                .map(ItemPublicResponse::from)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Item not found"));
+    }
+
+    public List<MyItemResponse> listMine(String reporterId) {
+        return items.findByReporterIdOrderByCreatedAtDesc(reporterId)
+                .stream()
+                .map(MyItemResponse::from)
                 .toList();
     }
 }
