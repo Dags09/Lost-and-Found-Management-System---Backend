@@ -6,10 +6,13 @@ import com.lostandfound.backend.dto.ItemCreateRequest;
 import com.lostandfound.backend.dto.ItemPublicResponse;
 import com.lostandfound.backend.dto.MyItemResponse;
 import com.lostandfound.backend.exception.ApiException;
+import com.lostandfound.backend.models.ItemImage;
 import com.lostandfound.backend.models.Items;
+import com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
 import com.lostandfound.backend.repository.CategoryRepository;
+import com.lostandfound.backend.repository.ClaimRepository;
 import com.lostandfound.backend.repository.DropLocationRepository;
 import com.lostandfound.backend.repository.ItemRepository;
 import org.springframework.http.HttpStatus;
@@ -22,6 +25,8 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.data.mongodb.core.query.TextQuery;
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.ArrayList;
 
 import java.util.List;
@@ -29,17 +34,23 @@ import java.util.List;
 @Service
 public class ItemService {
 
+    private static final int MAX_IMAGES = 3;
+
     private final ItemRepository items;
     private final CategoryRepository categories;
     private final DropLocationRepository dropLocations;
     private final MongoTemplate mongo;
+    private final ImageStorageService imageStorage;
+    private final ClaimRepository claims;
 
     public ItemService(ItemRepository items, CategoryRepository categories,
-                       DropLocationRepository dropLocations, MongoTemplate mongo) {
+                       DropLocationRepository dropLocations, MongoTemplate mongo,
+                       ImageStorageService imageStorage) {
         this.items = items;
         this.categories = categories;
         this.dropLocations = dropLocations;
         this.mongo = mongo;
+        this.imageStorage = imageStorage;
     }
 
     public ItemPublicResponse create(String reporterId, ItemCreateRequest req) {
@@ -58,6 +69,7 @@ public class ItemService {
 
     public void delete(String id, String userId) {
         Items i = findOwnedOpenItem(id, userId);
+        i.getImages().forEach(img -> imageStorage.delete(img.getPublicId()));
         items.delete(i);
     }
 
@@ -110,6 +122,28 @@ public class ItemService {
                 .toList();
     }
 
+    public MyItemResponse addImage(String id, String userId, MultipartFile file) {
+        Items i = findOwnedOpenItem(id, userId);
+        if (i.getImages().size() >= MAX_IMAGES)
+            throw new ApiException(HttpStatus.CONFLICT, "An item can have at most " + MAX_IMAGES + " images");
+        ImageStorageService.StoredImage stored = imageStorage.upload(file);
+        i.getImages().add(new ItemImage(stored.url(), stored.publicId(), i.getImages().size()));
+        return MyItemResponse.from(items.save(i));
+    }
+
+    public MyItemResponse removeImage(String id, String userId, int position) {
+        Items i = findOwnedOpenItem(id, userId);
+        ItemImage target = i.getImages().stream()
+                .filter(img -> img.getPosition() == position)
+                .findFirst()
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Image not found"));
+        imageStorage.delete(target.getPublicId());
+        i.getImages().remove(target);
+        for (int n = 0; n < i.getImages().size(); n++)
+            i.getImages().get(n).setPosition(n);          // keep positions 0,1,2 with no gaps
+        return MyItemResponse.from(items.save(i));
+    }
+
     // ---- helpers -------------------------------------------------------
 
     /** Loads an item and enforces: it exists (404), it is yours (403), it is still open (409). */
@@ -120,6 +154,8 @@ public class ItemService {
             throw new ApiException(HttpStatus.FORBIDDEN, "You can only change your own reports");
         if (i.getStatus() != ItemStatus.OPEN)
             throw new ApiException(HttpStatus.CONFLICT, "Only open items can be changed");
+        if (claims.existsByItemIdAndStatus(id, ClaimStatus.PENDING))
+            throw new ApiException(HttpStatus.CONFLICT, "This item has pending claims and cannot be deleted");
         return i;
     }
 

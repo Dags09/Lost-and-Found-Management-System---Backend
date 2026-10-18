@@ -12,6 +12,10 @@ import java.time.Instant;
 @Document(collection = "claims")
 public class Claim {
 
+    private String proofImagePublicId;   // Cloudinary id, never sent to clients
+    private String reviewNote;           // staff's reason (used in 5b)
+    private Instant reviewedAt;          // when staff decided (used in 5b)
+
     @Id
     private String id;
 
@@ -62,4 +66,13 @@ public class Claim {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
+
+    public String getProofImagePublicId() { return proofImagePublicId; }
+    public void setProofImagePublicId(String proofImagePublicId) { this.proofImagePublicId = proofImagePublicId; }
+
+    public String getReviewNote() { return reviewNote; }
+    public void setReviewNote(String reviewNote) { this.reviewNote = reviewNote; }
+
+    public Instant getReviewedAt() { return reviewedAt; }
+    public void setReviewedAt(Instant reviewedAt) { this.reviewedAt = reviewedAt; }
 }

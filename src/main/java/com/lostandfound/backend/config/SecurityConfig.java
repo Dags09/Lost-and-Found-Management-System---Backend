@@ -1,11 +1,11 @@
 package com.lostandfound.backend.config;
 
 import com.lostandfound.backend.security.JwtAuthFilter;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -13,12 +13,12 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.io.IOException;
 import java.util.List;
 
 @Configuration
@@ -49,6 +49,12 @@ public class SecurityConfig {
 
                 //STATELESS the server doesn’t remember logins. Each request must carry its own token (JWT).
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint((req, res, ex) ->
+                                writeError(res, 401, "Not logged in, or your session has expired"))
+                        .accessDeniedHandler((req, res, ex) ->
+                                writeError(res, 403, "You do not have permission to do this"))
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/v1/auth/me").authenticated()
                         .requestMatchers("/v1/auth/**").permitAll()
@@ -58,6 +64,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+
 
         return http.build();
     }
@@ -72,5 +79,12 @@ public class SecurityConfig {
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", cfg);
         return source;
+    }
+
+    private static void writeError(HttpServletResponse res, int status, String message) throws IOException {
+        res.setStatus(status);
+        res.setContentType("application/json");
+        res.setCharacterEncoding("UTF-8");
+        res.getWriter().write("{\"error\":\"" + message + "\"}");
     }
 }

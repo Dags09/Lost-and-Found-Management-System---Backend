@@ -7,8 +7,10 @@ import com.lostandfound.backend.dto.PageResponse;
 import com.lostandfound.backend.service.ItemService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -60,5 +62,19 @@ public class ItemController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable String id, Authentication authentication) {
         service.delete(id, (String) authentication.getPrincipal());
+    }
+    @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public MyItemResponse addImage(@PathVariable String id,
+                                   Authentication authentication,
+                                   @RequestParam("file") MultipartFile file) {
+        return service.addImage(id, (String) authentication.getPrincipal(), file);
+    }
+
+    @DeleteMapping("/{id}/images/{position}")
+    public MyItemResponse removeImage(@PathVariable String id,
+                                      @PathVariable int position,
+                                      Authentication authentication) {
+        return service.removeImage(id, (String) authentication.getPrincipal(), position);
     }
 }
