@@ -9,4 +9,6 @@ import java.util.List;
 public interface ItemRepository extends MongoRepository<Items, String> {
     List<Items> findByStatusOrderByCreatedAtDesc(ItemStatus status);
     List<Items> findByReporterIdOrderByCreatedAtDesc(String reporterId);
+    boolean existsByCategoryId(String categoryId);
+    boolean existsByDropLocationId(String dropLocationId);
 }

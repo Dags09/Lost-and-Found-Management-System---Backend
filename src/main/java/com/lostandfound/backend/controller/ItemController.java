@@ -3,6 +3,7 @@ package com.lostandfound.backend.controller;
 import com.lostandfound.backend.dto.ItemCreateRequest;
 import com.lostandfound.backend.dto.ItemPublicResponse;
 import com.lostandfound.backend.dto.MyItemResponse;
+import com.lostandfound.backend.dto.PageResponse;
 import com.lostandfound.backend.service.ItemService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -29,8 +30,13 @@ public class ItemController {
     }
 
     @GetMapping
-    public List<ItemPublicResponse> list() {
-        return service.listOpen();
+    public PageResponse<ItemPublicResponse> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String categoryId,
+            @RequestParam(required = false) String dropLocationId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return service.search(q, categoryId, dropLocationId, page, size);
     }
 
     @GetMapping("/mine")
@@ -41,5 +47,18 @@ public class ItemController {
     @GetMapping("/{id}")
     public ItemPublicResponse get(@PathVariable String id) {
         return service.getPublic(id);
+    }
+
+    @PutMapping("/{id}")
+    public MyItemResponse update(@PathVariable String id,
+                                 Authentication authentication,
+                                 @Valid @RequestBody ItemCreateRequest req) {
+        return service.update(id, (String) authentication.getPrincipal(), req);
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable String id, Authentication authentication) {
+        service.delete(id, (String) authentication.getPrincipal());
     }
 }

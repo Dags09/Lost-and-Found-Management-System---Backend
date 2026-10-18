@@ -4,6 +4,7 @@ import com.lostandfound.backend.dto.DropLocationRequest;
 import com.lostandfound.backend.exception.ApiException;
 import com.lostandfound.backend.models.DropOrClaimed;
 import com.lostandfound.backend.repository.DropLocationRepository;
+import com.lostandfound.backend.repository.ItemRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -13,9 +14,11 @@ import java.util.List;
 public class DropLocationService {
 
     private final DropLocationRepository locations;
+    private final ItemRepository items;
 
-    public DropLocationService(DropLocationRepository locations) {
+    public DropLocationService(DropLocationRepository locations, ItemRepository items) {
         this.locations = locations;
+        this.items = items;
     }
 
     public List<DropOrClaimed> list() {
@@ -46,6 +49,8 @@ public class DropLocationService {
     public void delete(String id) {
         if (!locations.existsById(id))
             throw new ApiException(HttpStatus.NOT_FOUND, "Drop-off location not found");
+        if (items.existsByDropLocationId(id))
+            throw new ApiException(HttpStatus.CONFLICT, "Drop-off location is in use by existing items");
         locations.deleteById(id);
     }
 }

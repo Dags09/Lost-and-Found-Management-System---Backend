@@ -4,6 +4,7 @@ import com.lostandfound.backend.dto.CategoryRequest;
 import com.lostandfound.backend.exception.ApiException;
 import com.lostandfound.backend.models.Categories;
 import com.lostandfound.backend.repository.CategoryRepository;
+import com.lostandfound.backend.repository.ItemRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -13,9 +14,11 @@ import java.util.List;
 public class CategoryService {
 
     private final CategoryRepository categories;
+    private final ItemRepository items;
 
-    public CategoryService(CategoryRepository categories) {
+    public CategoryService(CategoryRepository categories, ItemRepository items) {
         this.categories = categories;
+        this.items = items;
     }
 
     public List<Categories> list() {
@@ -46,6 +49,8 @@ public class CategoryService {
     public void delete(String id) {
         if (!categories.existsById(id))
             throw new ApiException(HttpStatus.NOT_FOUND, "Category not found");
+        if (items.existsByCategoryId(id))
+            throw new ApiException(HttpStatus.CONFLICT, "Category is in use by existing items");
         categories.deleteById(id);
     }
 }
