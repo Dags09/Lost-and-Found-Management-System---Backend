@@ -30,7 +30,7 @@ public class Users {
     private String lastName;
 
     @Column(name = "student_id", unique = true)
-    private Integer studentId;
+    private String studentId;
 
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
