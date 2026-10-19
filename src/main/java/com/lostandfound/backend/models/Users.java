@@ -70,8 +70,8 @@ public class Users {
     public String getLastName(){ return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
 
-    public Integer getStudentId(){ return studentId; }
-    public void setStudentId(Integer studentId) { this.studentId = studentId; }
+    public String getStudentId(){ return studentId; }
+    public void setStudentId(String studentId) { this.studentId = studentId; }
 
     public String getEmail(){ return email; }
     public void setEmail(String email) { this.email = email; }
@@ -97,7 +97,7 @@ public class Users {
     public boolean isStudentIdValidForRole() {
 
         if (this.role == Role.Student) {
-            return this.studentId != null && this.studentId > 0;
+            return this.studentId != null;
         }
 
         return true;
