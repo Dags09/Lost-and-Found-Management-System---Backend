@@ -14,8 +14,6 @@ import java.time.Instant;
 @Table(name = "claims")
 public class Claim {
 
-    @Column(name = "proof_image_public_id")
-    private String proofImagePublicId;   // Cloudinary id, never sent to clients
     @Column(name = "review_note", columnDefinition = "text")
     private String reviewNote;           // staff's reason (used in 5b)
     @Column(name = "reviewed_at")
@@ -36,9 +34,9 @@ public class Claim {
     @Column(name = "proof_description", nullable = false, columnDefinition = "text")
     private String proofDescription;
 
-    @NotBlank(message = "provide an image where your holding/using the item or image of the item along with the  distinguishing mark")
-    @Column(name = "proof_image_url", nullable = false, length = 1024)
-    private String proofImageUrl;
+    // Proof photo: a row in the "images" table (purpose PROOF). Served only to the claimant and staff.
+    @Column(name = "proof_image_id", length = 36)
+    private String proofImageId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -68,8 +66,8 @@ public class Claim {
     public String getProofDescription() { return proofDescription; }
     public void setProofDescription(String proofDescription) { this.proofDescription = proofDescription; }
 
-    public String getProofImageUrl() { return proofImageUrl; }
-    public void setProofImageUrl(String proofImageUrl) { this.proofImageUrl = proofImageUrl; }
+    public String getProofImageId() { return proofImageId; }
+    public void setProofImageId(String proofImageId) { this.proofImageId = proofImageId; }
 
     public ClaimStatus getStatus() { return status; }
     public void setStatus(ClaimStatus status) { this.status = status; }
@@ -79,9 +77,6 @@ public class Claim {
 
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
-
-    public String getProofImagePublicId() { return proofImagePublicId; }
-    public void setProofImagePublicId(String proofImagePublicId) { this.proofImagePublicId = proofImagePublicId; }
 
     public String getReviewNote() { return reviewNote; }
     public void setReviewNote(String reviewNote) { this.reviewNote = reviewNote; }

@@ -3,6 +3,7 @@ package com.lostandfound.backend.service;
 import com.lostandfound.backend.dto.ClaimResponse;
 import com.lostandfound.backend.exception.ApiException;
 import com.lostandfound.backend.models.Claim;
+import com.lostandfound.backend.models.ImageFile;
 import com.lostandfound.backend.models.Items;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
@@ -10,6 +11,7 @@ import com.lostandfound.backend.repository.ClaimRepository;
 import com.lostandfound.backend.repository.ItemRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -29,6 +31,7 @@ public class ClaimService {
         this.imageStorage = imageStorage;
     }
 
+    @Transactional
     public ClaimResponse submit(String itemId, String claimantId,
                                 String proofDescription, MultipartFile proofImage) {
         // 1. Cheap checks first, before spending an upload
@@ -47,21 +50,28 @@ public class ClaimService {
         if (claims.existsByItemIdAndClaimantIdAndStatus(itemId, claimantId, ClaimStatus.PENDING))
             throw new ApiException(HttpStatus.CONFLICT, "You already have a pending claim for this item");
 
-        // 2. Upload the proof photo, then save the claim
-        ImageStorageService.StoredImage stored = imageStorage.upload(proofImage, "lostandfound/claims");
+        // 2. Save the proof photo (into PostgreSQL) and the claim in ONE transaction:
+        //    if anything fails, both roll back, so no orphan photo is left behind.
+        String imageId = imageStorage.save(proofImage, ImageFile.Purpose.PROOF);
 
         Claim c = new Claim();
         c.setItemId(itemId);
         c.setClaimantId(claimantId);
         c.setProofDescription(proofDescription.trim());
-        c.setProofImageUrl(stored.url());
-        c.setProofImagePublicId(stored.publicId());
-        try {
-            return ClaimResponse.from(claims.save(c));
-        } catch (RuntimeException e) {
-            imageStorage.delete(stored.publicId());   // don't leave an orphan photo behind
-            throw e;
-        }
+        c.setProofImageId(imageId);
+        return ClaimResponse.from(claims.saveAndFlush(c));
+    }
+
+    /** The claimant can see their own proof photo; Moderators/Admins can see any. Others get 404. */
+    @Transactional(readOnly = true)
+    public ImageFile getProofImage(String claimId, String userId, boolean isStaff) {
+        Claim c = claims.findById(claimId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Image not found"));
+        if (!isStaff && !userId.equals(c.getClaimantId()))
+            throw new ApiException(HttpStatus.NOT_FOUND, "Image not found");
+        if (c.getProofImageId() == null)
+            throw new ApiException(HttpStatus.NOT_FOUND, "Image not found");
+        return imageStorage.get(c.getProofImageId(), ImageFile.Purpose.PROOF);
     }
 
     public List<ClaimResponse> listMine(String claimantId) {

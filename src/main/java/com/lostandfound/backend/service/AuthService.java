@@ -9,6 +9,7 @@ import com.lostandfound.backend.security.JwtService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -18,17 +19,22 @@ public class AuthService {
     private final UserRepository users;
     private final PasswordEncoder encoder;
     private final JwtService jwt;
+    private final String dummyHash;
 
     public AuthService(UserRepository users, PasswordEncoder encoder, JwtService jwt) {
         this.users = users;
         this.encoder = encoder;
         this.jwt = jwt;
+        this.dummyHash = encoder.encode("anything");
     }
 
     /** Public sign-up always creates a Student. Staff accounts are created by an Admin. */
     public AuthResponse register(RegisterRequest req) {
         String email = req.email().trim().toLowerCase();
-        if (users.existsByEmail(email)) throw new ApiException(HttpStatus.CONFLICT, "Email already registered");
+        if (users.existsByEmail(email)
+                || users.existsByPhoneNum(req.phoneNum())
+                || users.existsByStudentId(req.studentId()))
+            throw new ApiException(HttpStatus.CONFLICT, "An account with these details already exists");
         if (users.existsByPhoneNum(req.phoneNum())) throw new ApiException(HttpStatus.CONFLICT, "Phone number already registered");
         if (users.existsByStudentId(req.studentId())) throw new ApiException(HttpStatus.CONFLICT, "Student ID already registered");
 
@@ -43,11 +49,17 @@ public class AuthService {
         return tokensFor(users.save(u));
     }
 
+    private static final String DUMMY_HASH =
+            new BCryptPasswordEncoder().encode("anything");
+
     public AuthResponse login(LoginRequest req) {
-        Users u = users.findByEmail(req.email().trim().toLowerCase())
-                .orElseThrow(() -> new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password"));
-        if (!encoder.matches(req.password(), u.getPassword()))
+        Users u = users.findByEmail(req.email().trim().toLowerCase()).orElse(null);
+
+        boolean ok = encoder.matches(req.password(), u != null ? u.getPassword() : dummyHash);
+
+        if (u == null || !ok)
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Invalid email or password");
+
         return tokensFor(u);
     }
 

@@ -27,6 +27,7 @@ public class SecurityConfig {
 
     private final JwtAuthFilter jwtAuthFilter;
 
+
     public SecurityConfig(JwtAuthFilter jwtAuthFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
     }
@@ -59,6 +60,8 @@ public class SecurityConfig {
                         .requestMatchers("/v1/auth/me").authenticated()
                         .requestMatchers("/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/categories/**").permitAll()
+                        // item photos are loaded by <Image>/<img> tags, which can't send a Bearer token
+                        .requestMatchers(HttpMethod.GET, "/v1/images/**").permitAll()
                         .requestMatchers("/v1/admin/**").hasRole("Admin")
                         .requestMatchers("/v1/moderation/**").hasAnyRole("Moderator", "Admin")
                         .anyRequest().authenticated()
@@ -87,4 +90,6 @@ public class SecurityConfig {
         res.setCharacterEncoding("UTF-8");
         res.getWriter().write("{\"error\":\"" + message + "\"}");
     }
+
+
 }

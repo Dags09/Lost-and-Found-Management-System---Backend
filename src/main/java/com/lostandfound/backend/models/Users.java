@@ -1,15 +1,12 @@
 package com.lostandfound.backend.models;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lostandfound.backend.models.enumRoleStatusTypes.Role;
-import jakarta.validation.constraints.AssertTrue;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.CreatedDate;
 
 import java.time.Instant;
@@ -47,6 +44,9 @@ public class Users {
 
     @NotBlank(message = "Password is required")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
+    @Size(min = 8, max = 12)
+    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,12}$",
+            message = "Password must be 8–12 characters with at least one letter and one number")
     private String password;
 
 

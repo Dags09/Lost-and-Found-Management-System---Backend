@@ -6,6 +6,7 @@ import com.lostandfound.backend.dto.ItemCreateRequest;
 import com.lostandfound.backend.dto.ItemPublicResponse;
 import com.lostandfound.backend.dto.MyItemResponse;
 import com.lostandfound.backend.exception.ApiException;
+import com.lostandfound.backend.models.ImageFile;
 import com.lostandfound.backend.models.ItemImage;
 import com.lostandfound.backend.models.Items;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus;
@@ -17,11 +18,13 @@ import com.lostandfound.backend.repository.DropLocationRepository;
 import com.lostandfound.backend.repository.ItemRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import com.lostandfound.backend.dto.PageResponse;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -61,10 +64,19 @@ public class ItemService {
         return MyItemResponse.from(items.save(i));
     }
 
+    @Transactional
     public void delete(String id, String userId) {
         Items i = findOwnedOpenItem(id, userId);
-        i.getImages().forEach(img -> imageStorage.delete(img.getPublicId()));
+
+        // Collect every picture that belongs to this item (its photos + proof photos of old claims)
+        List<String> imageIds = new ArrayList<>();
+        i.getImages().forEach(img -> imageIds.add(img.getImageId()));
+        claims.findByItemId(id).forEach(c -> imageIds.add(c.getProofImageId()));
+        imageIds.removeIf(java.util.Objects::isNull);
+
         items.delete(i);
+        items.flush();                       // the database cascades the claims/item_images rows away
+        imageStorage.deleteAll(imageIds);    // now nothing points at the images any more
     }
 
     public PageResponse<ItemPublicResponse> search(String q, String categoryId,
@@ -110,26 +122,29 @@ public class ItemService {
                 .toList();
     }
 
+    @Transactional
     public MyItemResponse addImage(String id, String userId, MultipartFile file) {
         Items i = findOwnedOpenItem(id, userId);
         if (i.getImages().size() >= MAX_IMAGES)
             throw new ApiException(HttpStatus.CONFLICT, "An item can have at most " + MAX_IMAGES + " images");
-        ImageStorageService.StoredImage stored = imageStorage.upload(file);
-        i.getImages().add(new ItemImage(stored.url(), stored.publicId(), i.getImages().size()));
+        String imageId = imageStorage.save(file, ImageFile.Purpose.ITEM);
+        i.getImages().add(new ItemImage(imageId, i.getImages().size()));
         return MyItemResponse.from(items.save(i));
     }
 
+    @Transactional
     public MyItemResponse removeImage(String id, String userId, int position) {
         Items i = findOwnedOpenItem(id, userId);
         ItemImage target = i.getImages().stream()
                 .filter(img -> img.getPosition() == position)
                 .findFirst()
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Image not found"));
-        imageStorage.delete(target.getPublicId());
         i.getImages().remove(target);
         for (int n = 0; n < i.getImages().size(); n++)
             i.getImages().get(n).setPosition(n);          // keep positions 0,1,2 with no gaps
-        return MyItemResponse.from(items.save(i));
+        Items saved = items.saveAndFlush(i);
+        imageStorage.delete(target.getImageId());         // after the reference is gone
+        return MyItemResponse.from(saved);
     }
 
     // ---- helpers -------------------------------------------------------

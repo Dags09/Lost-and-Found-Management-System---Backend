@@ -10,4 +10,5 @@ public interface ClaimRepository extends JpaRepository<Claim, String> {
     boolean existsByItemIdAndClaimantIdAndStatus(String itemId, String claimantId, ClaimStatus status);
     boolean existsByItemIdAndStatus(String itemId, ClaimStatus status);
     List<Claim> findByClaimantIdOrderByCreatedAtDesc(String claimantId);
+    List<Claim> findByItemId(String itemId);
 }

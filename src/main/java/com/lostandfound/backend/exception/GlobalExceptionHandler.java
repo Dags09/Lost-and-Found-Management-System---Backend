@@ -2,6 +2,7 @@ package com.lostandfound.backend.exception;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,8 +46,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("error", "Validation failed", "fields", fields));
     }
 
-    @ExceptionHandler(DuplicateKeyException.class)
-    public ResponseEntity<Map<String, Object>> handleDuplicate(DuplicateKeyException e) {
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleIntegrity(DataIntegrityViolationException e) {
+        log.warn("Data integrity violation", e);
         return error(HttpStatus.CONFLICT, "A record with the same unique value already exists");
     }
 

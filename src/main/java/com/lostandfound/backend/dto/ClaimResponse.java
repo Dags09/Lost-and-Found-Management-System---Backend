@@ -1,5 +1,6 @@
 package com.lostandfound.backend.dto;
 
+import com.lostandfound.backend.config.ImageUrls;
 import com.lostandfound.backend.models.Claim;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus;
 
@@ -17,7 +18,7 @@ public record ClaimResponse(
 ) {
     public static ClaimResponse from(Claim c) {
         return new ClaimResponse(
-                c.getId(), c.getItemId(), c.getProofDescription(), c.getProofImageUrl(),
+                c.getId(), c.getItemId(), c.getProofDescription(), ImageUrls.forClaimProof(c.getId(), c.getProofImageId()),
                 c.getStatus(), c.getReviewNote(), c.getCreatedAt(), c.getReviewedAt());
     }
 }

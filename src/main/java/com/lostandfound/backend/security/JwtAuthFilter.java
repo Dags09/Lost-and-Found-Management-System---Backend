@@ -1,5 +1,6 @@
 package com.lostandfound.backend.security;
 
+import com.lostandfound.backend.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -20,9 +21,11 @@ import java.util.List;
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
+    private final UserRepository users;
 
-    public JwtAuthFilter(JwtService jwtService) {
+    public JwtAuthFilter(JwtService jwtService, UserRepository users) {
         this.jwtService = jwtService;
+        this.users = users;
     }
 
     @Override
@@ -34,10 +37,12 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 Claims claims = jwtService.parseAccessToken(header.substring(7));
-                var auth = new UsernamePasswordAuthenticationToken(
-                        claims.getSubject(), null,
-                        List.of(new SimpleGrantedAuthority("ROLE_" + claims.get("role", String.class))));
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                users.findRoleById(claims.getSubject()).ifPresent(role -> {
+                    var auth = new UsernamePasswordAuthenticationToken(
+                            claims.getSubject(), null,
+                            List.of(new SimpleGrantedAuthority("ROLE_" + role.name())));
+                    SecurityContextHolder.getContext().setAuthentication(auth);
+                });
             } catch (JwtException | IllegalArgumentException e) {
                 // invalid/expired token: leave unauthenticated, the security rules will return 401/403
             }

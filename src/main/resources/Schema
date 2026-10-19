@@ -113,3 +113,33 @@ CREATE TABLE IF NOT EXISTS notifications (
     created_at  TIMESTAMPTZ
 );
 CREATE INDEX IF NOT EXISTS ix_notifications_user ON notifications (user_id);
+
+
+
+
+-- 1. Where the picture bytes live
+CREATE TABLE IF NOT EXISTS images (
+    id            VARCHAR(36)  PRIMARY KEY,
+    content_type  VARCHAR(50)  NOT NULL,
+    size_bytes    BIGINT       NOT NULL,
+    purpose       VARCHAR(10)  NOT NULL CHECK (purpose IN ('ITEM','PROOF')),
+    data          BYTEA        NOT NULL,
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+-- 2. Item photos now reference images(id)
+ALTER TABLE item_images ADD COLUMN IF NOT EXISTS image_id VARCHAR(36) REFERENCES images(id);
+ALTER TABLE item_images DROP COLUMN IF EXISTS url;
+ALTER TABLE item_images DROP COLUMN IF EXISTS public_id;
+
+-- 3. Claim proof photos now reference images(id)
+ALTER TABLE claims ADD COLUMN IF NOT EXISTS proof_image_id VARCHAR(36) REFERENCES images(id);
+ALTER TABLE claims DROP COLUMN IF EXISTS proof_image_url;
+ALTER TABLE claims DROP COLUMN IF EXISTS proof_image_public_id;
+
+CREATE INDEX IF NOT EXISTS ix_claims_proof_image ON claims (proof_image_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_claims_one_pending
+    ON claims (item_id, claimant_id) WHERE status = 'PENDING';
+
+
