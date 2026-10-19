@@ -1,29 +1,36 @@
 package com.lostandfound.backend.models;
 
+import jakarta.persistence.*;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import com.lostandfound.backend.models.enumRoleStatusTypes.MatchStatus;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Document(collection = "matches")
+@Entity
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "matches")
 public class Match {
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(length = 36)
     private String id;
 
-    @Indexed
+    @Column(name = "lost_item_id")
     private String lostItemId;
 
-    @Indexed
+    @Column(name = "found_item_id")
     private String foundItemId;
 
     private double score;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private MatchStatus status = MatchStatus.SUGGESTED;
 
     @CreatedDate
+    @Column(name = "created_at")
     private Instant createdAt;
 
     public Match() {}

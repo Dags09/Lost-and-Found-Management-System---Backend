@@ -6,6 +6,7 @@ import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.List;
 
 public record MyItemResponse(
         String id,
@@ -21,13 +22,15 @@ public record MyItemResponse(
         LocalDate dateOccurred,
         ItemStatus status,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        List<ItemImageResponse> images
 ) {
     public static MyItemResponse from(Items i) {
         return new MyItemResponse(
                 i.getId(), i.getName(), i.getType(), i.getDescription(),
                 i.getCategoryId(), i.getColor(), i.getBrand(),
                 i.getDistinguishingMarks(), i.getLocationName(), i.getDropLocationId(),
-                i.getDateOccurred(), i.getStatus(), i.getCreatedAt(), i.getUpdatedAt());
+                i.getDateOccurred(), i.getStatus(), i.getCreatedAt(), i.getUpdatedAt(),
+                ItemImageResponse.listFrom(i));
     }
 }

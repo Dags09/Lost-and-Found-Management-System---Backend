@@ -1,13 +1,18 @@
 package com.lostandfound.backend.models;
 
-import jakarta.validation.constraints.NotBlank;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.persistence.*;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
-@Document(collection = "DropOrClaimed")
+import jakarta.validation.constraints.NotBlank;
+
+@Entity
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "drop_locations")
 public class DropOrClaimed {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(length = 36)
     private String id;
 
     @NotBlank(message = "Required Name of the Place")

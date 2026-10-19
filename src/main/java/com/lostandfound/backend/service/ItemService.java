@@ -19,17 +19,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import com.lostandfound.backend.dto.PageResponse;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.TextCriteria;
-import org.springframework.data.mongodb.core.query.TextQuery;
+import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.util.ArrayList;
-
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ItemService {
@@ -39,18 +34,17 @@ public class ItemService {
     private final ItemRepository items;
     private final CategoryRepository categories;
     private final DropLocationRepository dropLocations;
-    private final MongoTemplate mongo;
     private final ImageStorageService imageStorage;
     private final ClaimRepository claims;
 
     public ItemService(ItemRepository items, CategoryRepository categories,
-                       DropLocationRepository dropLocations, MongoTemplate mongo,
-                       ImageStorageService imageStorage) {
+                       DropLocationRepository dropLocations,
+                       ImageStorageService imageStorage, ClaimRepository claims) {
         this.items = items;
         this.categories = categories;
         this.dropLocations = dropLocations;
-        this.mongo = mongo;
         this.imageStorage = imageStorage;
+        this.claims = claims;
     }
 
     public ItemPublicResponse create(String reporterId, ItemCreateRequest req) {
@@ -77,36 +71,30 @@ public class ItemService {
                                                    String dropLocationId, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 50);
+        String category = (categoryId == null || categoryId.isBlank()) ? null : categoryId;
+        String dropLocation = (dropLocationId == null || dropLocationId.isBlank()) ? null : dropLocationId;
+        PageRequest pageable = PageRequest.of(safePage, safeSize);
 
-        // 1. Build the filters, only adding the ones the client sent
-        List<Criteria> filters = new ArrayList<>();
-        filters.add(Criteria.where("status").is(ItemStatus.OPEN));
-        if (categoryId != null && !categoryId.isBlank())
-            filters.add(Criteria.where("categoryId").is(categoryId));
-        if (dropLocationId != null && !dropLocationId.isBlank())
-            filters.add(Criteria.where("dropLocationId").is(dropLocationId));
-        Criteria criteria = new Criteria().andOperator(filters);
+        // With words: full-text search, best match first. Without: newest first.
+        String tsQuery = toTsQuery(q);
+        Page<Items> result = tsQuery != null
+                ? items.searchOpen(tsQuery, category, dropLocation, pageable)
+                : items.browseOpen(category, dropLocation, pageable);
 
-        // 2. With words: text search, best match first. Without: newest first.
-        Query query;
-        if (q != null && !q.isBlank()) {
-            TextCriteria text = TextCriteria.forDefaultLanguage()
-                    .matchingAny(q.trim().split("\\s+"));
-            query = TextQuery.queryText(text).sortByScore().addCriteria(criteria);
-        } else {
-            query = new Query(criteria).with(Sort.by(Sort.Direction.DESC, "createdAt"));
-        }
-
-        // 3. Count everything that matches, then fetch just one page
-        long total = mongo.count(query, Items.class);
-        query.with(PageRequest.of(safePage, safeSize));
-        List<ItemPublicResponse> content = mongo.find(query, Items.class)
-                .stream()
+        List<ItemPublicResponse> content = result.getContent().stream()
                 .map(ItemPublicResponse::from)
                 .toList();
+        return new PageResponse<>(content, safePage, safeSize,
+                result.getTotalElements(), result.getTotalPages());
+    }
 
-        int totalPages = (int) Math.ceil((double) total / safeSize);
-        return new PageResponse<>(content, safePage, safeSize, total, totalPages);
+    /** "black  wallet!" -> "black | wallet" (match ANY word). Null when nothing searchable is left. */
+    private static String toTsQuery(String q) {
+        if (q == null || q.isBlank()) return null;
+        String joined = Arrays.stream(q.trim().split("[^\\p{L}\\p{N}]+"))
+                .filter(w -> !w.isEmpty())
+                .collect(Collectors.joining(" | "));
+        return joined.isEmpty() ? null : joined;
     }
 
     public ItemPublicResponse getPublic(String id) {
@@ -155,7 +143,7 @@ public class ItemService {
         if (i.getStatus() != ItemStatus.OPEN)
             throw new ApiException(HttpStatus.CONFLICT, "Only open items can be changed");
         if (claims.existsByItemIdAndStatus(id, ClaimStatus.PENDING))
-            throw new ApiException(HttpStatus.CONFLICT, "This item has pending claims and cannot be deleted");
+            throw new ApiException(HttpStatus.CONFLICT, "This item has pending claims and cannot be changed");
         return i;
     }
 

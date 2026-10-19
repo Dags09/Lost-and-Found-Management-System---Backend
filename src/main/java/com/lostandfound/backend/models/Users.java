@@ -1,5 +1,8 @@
 package com.lostandfound.backend.models;
 
+import jakarta.persistence.*;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.lostandfound.backend.models.enumRoleStatusTypes.Role;
@@ -8,35 +11,38 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Document(collection = "users")
+@Entity
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "users")
 public class Users {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(length = 36)
     private String id;
 
     @NotBlank(message = "First name is required")
+    @Column(name = "first_name", nullable = false)
     private String firstName;
 
     @NotBlank(message = "Last name is required")
+    @Column(name = "last_name", nullable = false)
     private String lastName;
 
-    @Indexed(unique = true, sparse = true)
+    @Column(name = "student_id", unique = true)
     private Integer studentId;
 
     @NotBlank(message = "Email is required")
     @Email(message = "Invalid email format")
-    @Indexed(unique = true)
+    @Column(nullable = false, unique = true)
     private String email;
 
 
     @NotBlank(message = "Phone number is required")
-    @Indexed(unique = true)
+    @Column(name = "phone_num", nullable = false, unique = true)
     private String phoneNum;
 
     @NotBlank(message = "Password is required")
@@ -45,9 +51,11 @@ public class Users {
 
 
     @NotNull
+    @Enumerated(EnumType.STRING)
     private Role role = Role.Student;
 
     @CreatedDate
+    @Column(name = "created_at")
     private Instant createdAt;
 
     public Users(){}

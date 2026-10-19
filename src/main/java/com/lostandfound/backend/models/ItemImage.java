@@ -1,7 +1,13 @@
 package com.lostandfound.backend.models;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
+
+@Embeddable
 public class ItemImage {
+    @Column(length = 1024)
     private String url;
+    @Column(name = "public_id")
     private String publicId;   // Cloudinary's id, needed to delete the file. Never sent to clients.
     private int position;
 

@@ -1,8 +1,8 @@
 package com.lostandfound.backend.repository;
 
 import com.lostandfound.backend.models.DropOrClaimed;
-import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface DropLocationRepository extends MongoRepository<DropOrClaimed, String> {
+public interface DropLocationRepository extends JpaRepository<DropOrClaimed, String> {
     boolean existsByNameIgnoreCase(String name);
 }

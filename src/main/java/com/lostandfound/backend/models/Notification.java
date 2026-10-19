@@ -1,32 +1,43 @@
 package com.lostandfound.backend.models;
 
+import jakarta.persistence.*;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.Instant;
 import java.util.Map;
 
 import com.lostandfound.backend.models.enumRoleStatusTypes.NotificationType;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 
-@Document(collection = "notifications")
+@Entity
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "notifications")
 public class Notification {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(length = 36)
     private String id;
 
-    @Indexed
+    @Column(name = "user_id")
     private String userId;
 
+    @Enumerated(EnumType.STRING)
     private NotificationType type;
 
     /** Free-form data, e.g. {"itemId": "...", "matchId": "..."}. */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(columnDefinition = "jsonb")
     private Map<String, Object> payload;
 
+    @Column(name = "is_read", nullable = false)
     private boolean read = false;
 
     @CreatedDate
+    @Column(name = "created_at")
     private Instant createdAt;
 
     public Notification() {}

@@ -1,73 +1,88 @@
 package com.lostandfound.backend.models;
 
+import jakarta.persistence.*;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
 import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.index.TextIndexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-@Document(collection = "items")
+@Entity
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "items")
 public class Items {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(length = 36)
     private String id;
 
-    @Indexed
+    @Column(name = "reporter_id")
     private String reporterId;
 
     @NotBlank(message = "Required name for the item")
-    @TextIndexed(weight = 2)
+    @Column(nullable = false)
     private String name;
 
     @NotNull(message = "Required item type")
-    @Indexed
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ItemType type;
 
     @NotBlank(message = "Required description for the item")
-    @TextIndexed
+    @Column(nullable = false, columnDefinition = "text")
     private String description;
 
-    @Indexed
+    @Column(name = "category_id")
     private String categoryId;
 
     @NotBlank(message = "Required color for the item")
+    @Column(nullable = false)
     private String color;
 
     @NotBlank(message = "Required brand for the item")
+    @Column(nullable = false)
     private String brand;
 
     //do not reveal this in public, this should be used to identify who is the owner
     @NotBlank(message = "Required distinguishing marks for the item")
+    @Column(name = "distinguishing_marks", nullable = false, columnDefinition = "text")
     private String distinguishingMarks;
 
     @NotBlank(message = "Required location where it found")
+    @Column(name = "location_name", nullable = false)
     private String locationName;
 
-    @Indexed
+    @Column(name = "drop_location_id")
     private String dropLocationId;
 
+    @Column(name = "date_occurred")
     private LocalDate dateOccurred;
 
 
-    @Indexed
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private ItemStatus status = ItemStatus.OPEN;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "item_images", joinColumns = @JoinColumn(name = "item_id"))
+    @OrderBy("position ASC")
     private List<ItemImage> images = new ArrayList<>();
 
     @CreatedDate
+    @Column(name = "created_at", updatable = false)
     private Instant createdAt;
 
     @LastModifiedDate
+    @Column(name = "updated_at")
     private Instant updatedAt;
 
     public Items(){}

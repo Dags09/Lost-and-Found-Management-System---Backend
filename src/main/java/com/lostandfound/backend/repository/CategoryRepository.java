@@ -1,20 +1,20 @@
 package com.lostandfound.backend.repository;
 
 import com.lostandfound.backend.models.Categories;
-import org.springframework.data.mongodb.repository.MongoRepository;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 
 
 
-public interface CategoryRepository extends MongoRepository<Categories, String> {
+public interface CategoryRepository extends JpaRepository<Categories, String> {
     boolean existsByNameIgnoreCase(String name);
 }
-//public interface CategoryRepository extends MongoRepository<Categories, String>
+//public interface CategoryRepository extends JpaRepository<Categories, String>
 //
 //interface means this file only declares what it can do and contains no code that does it.
 //You never write the code. At startup, Spring sees this interface and generates the working code for you.
 //
-//extends MongoRepository<Categories, String> means “inherit everything MongoRepository can do”.
+//extends JpaRepository<Categories, String> means “inherit everything MongoRepository can do”.
 //The two things in <...> tell it:
 //
 //Categories: which model this repository manages (the categories collection).

@@ -1,31 +1,39 @@
 package com.lostandfound.backend.models;
 
+import jakarta.persistence.*;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
+
 import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.index.Indexed;
-import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 
-@Document(collection = "messages")
+@Entity
+@EntityListeners(AuditingEntityListener.class)
+@Table(name = "messages")
 public class Message {
 
     @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(length = 36)
     private String id;
 
-    @Indexed
+    @Column(name = "item_id")
     private String itemId;
 
+    @Column(name = "sender_id")
     private String senderId;
 
-    @Indexed
+    @Column(name = "receiver_id")
     private String receiverId;
 
+    @Column(columnDefinition = "text")
     private String body;
 
+    @Column(name = "read_at")
     private Instant readAt;
 
     @CreatedDate
+    @Column(name = "created_at")
     private Instant createdAt;
 
     public Message() {}
