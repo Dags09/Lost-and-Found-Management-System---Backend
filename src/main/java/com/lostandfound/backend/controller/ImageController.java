@@ -14,6 +14,10 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.concurrent.TimeUnit;
 
 
+/**
+ * /v1/images: public item photos. Proof and lost-report photos are private and are served by
+ * ClaimController and LostItemController after a permission check.
+ */
 @RestController
 @RequestMapping("/v1/images")
 public class ImageController {
@@ -24,6 +28,10 @@ public class ImageController {
         this.storage = storage;
     }
 
+    /**
+     * GET /v1/images/{id} : only ITEM photos are served here, so a proof or lost-report photo id gives
+     * 404. Images never change, so browsers may cache them for a year.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<byte[]> get(@PathVariable String id) {
         ImageFile img = storage.get(id, Purpose.ITEM);

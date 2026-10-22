@@ -5,8 +5,13 @@ import jakarta.validation.ConstraintValidatorContext;
 
 import java.nio.charset.StandardCharsets;
 
+/**
+ * Checks the @StrongPassword rule. Length is counted in UTF-8 bytes because that is what
+ * BCrypt's 72 limit applies to.
+ */
 public class StrongPasswordValidator implements ConstraintValidator<StrongPassword, String> {
 
+    /** null passes here on purpose: pair this with @NotBlank to make the field required. */
     @Override
     public boolean isValid(String value, ConstraintValidatorContext ctx) {
         if (value == null) return true;                 // use @NotBlank to require it

@@ -7,6 +7,10 @@ import com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus;
 
 import java.time.Instant;
 
+/**
+ * A claim as the claimant sees it. The nested Pickup (where to collect the item) is only filled in
+ * once the claim is APPROVED.
+ */
 public record ClaimResponse(
         String id,
         String itemId,

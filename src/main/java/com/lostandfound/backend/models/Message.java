@@ -7,6 +7,10 @@ import org.springframework.data.annotation.CreatedDate;
 
 import java.time.Instant;
 
+/**
+ * A message between two users about an item. The table and entity exist, but no endpoint uses
+ * them yet.
+ */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "messages")

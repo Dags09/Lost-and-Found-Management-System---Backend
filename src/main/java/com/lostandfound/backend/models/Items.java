@@ -15,6 +15,10 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * One report in the items table: either a FOUND item or a LOST report (see type). They share one
+ * table so both can be searched and matched using the same fields.
+ */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "items")

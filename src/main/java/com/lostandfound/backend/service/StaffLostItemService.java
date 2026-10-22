@@ -22,6 +22,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+
 /** Staff (Moderator or Admin) can read lost reports, so they can help a student who comes asking. */
 @Service
 public class StaffLostItemService {
@@ -34,6 +35,10 @@ public class StaffLostItemService {
         this.users = users;
     }
 
+    /**
+     * Lost reports with the given status, newest first. q narrows by words in the name, description,
+     * colour or brand. Reporters are loaded in one query for the whole page.
+     */
     @Transactional(readOnly = true)
     public PageResponse<StaffLostItemResponse> list(ItemStatus status, String q, int page, int size) {
         int safePage = Math.max(page, 0);
@@ -57,6 +62,7 @@ public class StaffLostItemService {
                 result.getTotalElements(), result.getTotalPages());
     }
 
+    /** One lost report with the reporter's contact details. Found items are not served here (404). */
     @Transactional(readOnly = true)
     public StaffLostItemResponse get(String id) {
         Items i = items.findById(id)

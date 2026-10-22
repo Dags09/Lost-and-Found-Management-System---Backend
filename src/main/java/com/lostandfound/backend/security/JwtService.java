@@ -11,6 +11,11 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
+/**
+ * Creates and reads JWTs. Two separate keys: the access token (short-lived, sent with every
+ * request) and the refresh token (long-lived, only used to get a new pair). Keys must be at
+ * least 32 bytes long.
+ */
 @Service
 public class JwtService {
 
@@ -29,19 +34,23 @@ public class JwtService {
         this.refreshExpiresMs = refreshExpiresMs;
     }
 
+    /** Short-lived token sent with every request. Subject = user id. */
     public String generateAccessToken(String userId, String role) {
         return build(userId, role, accessKey, accessExpiresMs, null);
     }
 
 
+    /** Long-lived token used only to get a new pair. jti links it to its row in refresh_tokens. */
     public String generateRefreshToken(String userId, String role, String jti) {
         return build(userId, role, refreshKey, refreshExpiresMs, jti);
     }
 
+    /** Lifetime of a refresh token in milliseconds (jwt.refresh-expires-in). */
     public long getRefreshExpiresMs() {
         return refreshExpiresMs;
     }
 
+    /** Signs a token with the given key and lifetime. */
     private String build(String userId, String role, SecretKey key, long ttlMs, String jti) {
         Date now = new Date();
         return Jwts.builder()
@@ -54,10 +63,12 @@ public class JwtService {
                 .compact();
     }
 
+    /** Throws JwtException if the token is invalid, tampered with or expired. */
     public Claims parseAccessToken(String token) throws JwtException {
         return parse(token, accessKey);
     }
 
+    /** Same, but checked against the refresh key, so an access token cannot be used here. */
     public Claims parseRefreshToken(String token) throws JwtException {
         return parse(token, refreshKey);
     }

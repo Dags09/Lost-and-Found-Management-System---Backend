@@ -18,6 +18,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 
+/**
+ * Sign-up, email verification, login (with account lockout), token refresh, logout and password
+ * reset. Login, resend and forgot-password answer the same way whether or not the email exists,
+ * so they cannot be used to find out who has an account.
+ */
 @Service
 public class AuthService {
 
@@ -58,6 +63,7 @@ public class AuthService {
 
     // ---- sign up / verify ------------------------------------------------
 
+
     /**
      * Public sign-up always creates a Student. Staff accounts are created by an Admin.
      * The account cannot log in until the email is verified, so no tokens are returned here
@@ -85,6 +91,7 @@ public class AuthService {
         return new AuthResponse(null, null, UserResponse.from(u));
     }
 
+
     /** Marks the email as verified when given a valid, unused, unexpired token. */
     @Transactional
     public MessageResponse verifyEmail(VerifyEmailRequest req) {
@@ -98,7 +105,11 @@ public class AuthService {
         return new MessageResponse("Email verified. You can now log in.");
     }
 
-    /** Always answers the same way, so it cannot be used to find out which emails are registered. */
+
+    /**
+     * Always answers the same way, so it cannot be used to find out which emails are registered.
+     * Limited to 3 emails per address per hour.
+     */
     public MessageResponse resendVerification(ResendVerificationRequest req) {
         String email = req.email().trim().toLowerCase();
         if (withinEmailLimit("resend", email)) {
@@ -109,11 +120,18 @@ public class AuthService {
 
     // ---- login / sessions ------------------------------------------------
 
+    /**
+     * Checks the password and returns a token pair.
+     * - After app.auth.max-failed-logins wrong passwords the account is locked for app.auth.lock-minutes.
+     * - Unknown emails still run a BCrypt check against a dummy hash, so response time does not reveal
+     *   whether the account exists.
+     * - The "verify your email" error is only shown after the password was right, for the same reason.
+     */
     public AuthResponse login(LoginRequest req) {
         Users u = users.findByEmail(req.email().trim().toLowerCase()).orElse(null);
         Instant now = Instant.now();
 
-        // Locked: still run a hash so the response time does not reveal the lock.
+
         if (u != null && u.getLockedUntil() != null && u.getLockedUntil().isAfter(now)) {
             encoder.matches(req.password(), dummyHash);
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS,
@@ -131,13 +149,14 @@ public class AuthService {
             u.setLockedUntil(null);
             users.save(u);
         }
-        // Only said after the password was right, so it does not leak which emails exist.
+
         if (!u.isEmailVerified())
             throw new ApiException(HttpStatus.FORBIDDEN, "Please verify your email first. Check your inbox.");
 
         return tokensFor(u);
     }
 
+    /** Counts a wrong password. At the limit the account is locked and the counter restarts. */
     private void recordFailedLogin(Users u, Instant now) {
         int attempts = u.getFailedLoginAttempts() + 1;
         if (attempts >= maxFailedLogins) {
@@ -148,7 +167,11 @@ public class AuthService {
         users.save(u);
     }
 
-    /** Each refresh token works once. Reusing one ends the whole session (see RefreshTokenService). */
+    /**
+     * Each refresh token works once. Reusing one ends the whole session (see RefreshTokenService).
+     * noRollbackFor: the revocation written when reuse is detected must still be saved even though
+     * we then throw a 401.
+     */
     @Transactional(noRollbackFor = ApiException.class)
     public AuthResponse refresh(RefreshRequest req) {
         RefreshTokenService.Rotation r = refreshTokens.rotate(req.refreshToken());
@@ -158,11 +181,13 @@ public class AuthService {
                 refreshTokens.continueSession(u, r.familyId()), UserResponse.from(u));
     }
 
+
     /** Ends the session of this refresh token. Always succeeds. */
     public MessageResponse logout(LogoutRequest req) {
         refreshTokens.revokeSession(req.refreshToken());
         return new MessageResponse("Logged out");
     }
+
 
     /** Ends every session of the user on every device. */
     public MessageResponse logoutAll(String userId) {
@@ -170,6 +195,7 @@ public class AuthService {
         return new MessageResponse("Logged out everywhere");
     }
 
+    /** The logged-in user's own profile. */
     public UserResponse me(String userId) {
         return users.findById(userId).map(UserResponse::from)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
@@ -177,7 +203,10 @@ public class AuthService {
 
     // ---- password reset --------------------------------------------------
 
-    /** Always answers the same way, so it cannot be used to find out which emails are registered. */
+    /**
+     * Always answers the same way, so it cannot be used to find out which emails are registered.
+     * The reset link is valid for 60 minutes; asking again invalidates the previous link.
+     */
     public MessageResponse forgotPassword(ForgotPasswordRequest req) {
         String email = req.email().trim().toLowerCase();
         if (withinEmailLimit("forgot", email)) {
@@ -191,8 +220,8 @@ public class AuthService {
     }
 
     /**
-     * Sets a new password, then logs the user out everywhere (so a thief's session dies too)
-     * and clears any login lock. Following the emailed link also proves the email is theirs.
+     * Sets a new password, logs the user out everywhere (so a thief's session dies too) and clears
+     * any login lock. Following the emailed link also proves the email is theirs.
      */
     @Transactional
     public MessageResponse resetPassword(ResetPasswordRequest req) {
@@ -212,17 +241,25 @@ public class AuthService {
 
     // ---- helpers ---------------------------------------------------------
 
-    /** At most 3 emails per address per hour, so nobody can use us to flood someone's inbox. */
+    /**
+     * At most 3 emails per address per hour, so nobody can use us to flood someone's inbox.
+     * The limiter returns 0 when the hit is allowed.
+     */
     private boolean withinEmailLimit(String kind, String email) {
         return limiter.tryAcquire(kind + ":" + email, 3, HOUR_MS) == 0;
     }
 
+    /**
+     * Creates a fresh token (older ones stop working) and emails the link. The email goes out in the
+     * background; a failed send is only logged.
+     */
     private void sendVerification(Users u) {
         String raw = authTokens.create(u.getId(), AuthToken.Type.VERIFY_EMAIL, Duration.ofHours(VERIFY_HOURS));
         emails.sendVerificationEmail(u.getEmail(), u.getFirstName(),
                 frontendUrl + "/verify-email?token=" + raw, VERIFY_HOURS);
     }
 
+    /** Starts a new session: a short-lived access token plus a refresh token saved in the database. */
     private AuthResponse tokensFor(Users u) {
         return new AuthResponse(jwt.generateAccessToken(u.getId(), u.getRole().name()),
                 refreshTokens.startSession(u), UserResponse.from(u));

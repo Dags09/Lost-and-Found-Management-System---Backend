@@ -8,6 +8,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * A FOUND item as everyone sees it. Leaves out distinguishingMarks and the reporter, so nobody can
+ * pass an ownership check just by reading the listing.
+ */
 public record ItemPublicResponse(
         String id,
         String name,

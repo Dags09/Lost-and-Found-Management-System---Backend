@@ -9,6 +9,10 @@ import org.springframework.data.annotation.CreatedDate;
 
 import java.time.Instant;
 
+/**
+ * A student's request to collect a found item, backed by a proof description and photo. It stays
+ * PENDING until staff approve or reject it.
+ */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "claims")

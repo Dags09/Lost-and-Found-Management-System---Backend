@@ -15,7 +15,11 @@ import java.util.Base64;
 import java.util.HexFormat;
 import java.util.Optional;
 
-/** Creates and redeems one-time email tokens (verify email, reset password). Only hashes are stored. */
+
+/**
+ * Creates and redeems one-time email tokens (verify email, reset password). Only a SHA-256 hash
+ * is stored, so a leaked database cannot be used to activate or reset accounts.
+ */
 @Service
 public class AuthTokenService {
 
@@ -26,7 +30,10 @@ public class AuthTokenService {
         this.tokens = tokens;
     }
 
-    /** Returns the raw token to put in the email link. Older unused tokens of the same kind stop working. */
+    /**
+     * Returns the raw token to put in the email link (only its hash is stored). Older unused tokens of
+     * the same kind stop working, so only the newest link is valid.
+     */
     @Transactional
     public String create(String userId, AuthToken.Type type, Duration ttl) {
         Instant now = Instant.now();
@@ -49,6 +56,7 @@ public class AuthTokenService {
                 .map(AuthToken::getUserId);
     }
 
+    /** SHA-256 hex of the token. The raw token is high-entropy random data, so a fast hash is enough. */
     private static String hash(String raw) {
         try {
             byte[] d = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(StandardCharsets.UTF_8));

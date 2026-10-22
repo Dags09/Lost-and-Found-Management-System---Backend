@@ -14,6 +14,7 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
+/** An uploaded picture (table images): its type, size and bytes. purpose decides who may see it. */
 @Entity
 @Table(name = "images")
 public class ImageFile {

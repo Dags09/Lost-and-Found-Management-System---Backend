@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/** Drop-off location rules: names are unique ignoring case, and a location in use cannot be deleted. */
 @Service
 public class DropLocationService {
 
@@ -32,6 +33,7 @@ public class DropLocationService {
         return locations.findAll().stream().map(DropLocationOption::from).toList();
     }
 
+    /** Names are unique ignoring case. */
     public DropOrClaimed create(DropLocationRequest req) {
         String name = req.name().trim();
         if (locations.existsByNameIgnoreCase(name))
@@ -55,6 +57,7 @@ public class DropLocationService {
         return locations.save(d);
     }
 
+    /** Refused with 409 while any item still uses the location. */
     public void delete(String id) {
         if (!locations.existsById(id))
             throw new ApiException(HttpStatus.NOT_FOUND, "Drop-off location not found");

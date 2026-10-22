@@ -7,6 +7,7 @@ import com.lostandfound.backend.service.StaffLostItemService;
 import org.springframework.web.bind.annotation.*;
 
 
+/** /v1/moderation/lost-items: staff read lost reports to help students (Moderator or Admin). */
 @RestController
 @RequestMapping("/v1/moderation/lost-items")
 public class ModerationLostItemController {
@@ -17,6 +18,7 @@ public class ModerationLostItemController {
         this.service = service;
     }
 
+    /** GET /v1/moderation/lost-items?status=OPEN&q=&page=&size= : lost reports, newest first. */
     @GetMapping
     public PageResponse<StaffLostItemResponse> list(@RequestParam(defaultValue = "OPEN") ItemStatus status,
                                                     @RequestParam(required = false) String q,
@@ -25,6 +27,7 @@ public class ModerationLostItemController {
         return service.list(status, q, page, size);
     }
 
+    /** GET /v1/moderation/lost-items/{id} : includes the private marks and the reporter's contact. */
     @GetMapping("/{id}")
     public StaffLostItemResponse get(@PathVariable String id) {
         return service.get(id);

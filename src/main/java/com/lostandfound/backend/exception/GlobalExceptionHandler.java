@@ -23,6 +23,10 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Turns every exception into a JSON {"error": ...} reply with the right status, so clients get one
+ * consistent format and never see a stack trace.
+ */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -32,12 +36,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(Map.of("error", message));
     }
 
+    /** Our own deliberate errors: use the status and message we chose. */
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, Object>> handleApi(ApiException e) {
         return error(e.getStatus(), e.getMessage());
     }
 
 
+    /** @Valid failed: 400 with the message for each bad field, e.g. {"fields": {"email": "..."}}. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException e) {
         Map<String, String> fields = new LinkedHashMap<>();
@@ -46,6 +52,11 @@ public class GlobalExceptionHandler {
     }
 
 
+    /**
+     * A database rule was broken, for example two requests creating the same pending claim at once
+     * (unique index). Reported as 409. Note: the message assumes a duplicate, which is not true for
+     * other kinds of violation.
+     */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleIntegrity(DataIntegrityViolationException e) {
         log.warn("Data integrity violation", e);
@@ -91,6 +102,7 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNAUTHORIZED, "Not logged in, or your session has expired");
     }
 
+    /** Anything we did not expect: logged in full, but the client only sees a generic 500. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception e) {
         log.error("Unexpected error", e);

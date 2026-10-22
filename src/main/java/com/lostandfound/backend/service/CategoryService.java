@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+/** Category rules: names are unique ignoring case, and a category in use cannot be deleted. */
 @Service
 public class CategoryService {
 
@@ -25,6 +26,7 @@ public class CategoryService {
         return categories.findAll();
     }
 
+    /** Names are unique ignoring case ("Phones" and "phones" count as the same). */
     public Categories create(CategoryRequest req) {
         String name = req.name().trim();
         if (categories.existsByNameIgnoreCase(name))
@@ -46,6 +48,7 @@ public class CategoryService {
         return categories.save(c);
     }
 
+    /** Refused with 409 while any item still uses the category. */
     public void delete(String id) {
         if (!categories.existsById(id))
             throw new ApiException(HttpStatus.NOT_FOUND, "Category not found");

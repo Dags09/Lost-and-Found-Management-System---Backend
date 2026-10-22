@@ -16,6 +16,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Creates and reads in-app notifications. The create methods join the caller's transaction, so if
+ * the caller rolls back, its notifications roll back too.
+ */
 @Service
 public class NotificationService {
 
@@ -25,10 +29,10 @@ public class NotificationService {
         this.notifications = notifications;
     }
 
+
     /**
-     * Saves one CLAIM_UPDATE notification. It joins the caller's transaction, so if an approval
-     * rolls back, its notifications roll back with it. A null userId is skipped.
-     * "event" tells the app what happened (CLAIM_SUBMITTED, CLAIM_APPROVED, CLAIM_REJECTED, ITEM_CLAIMED).
+     * Saves one CLAIM_UPDATE notification. A null userId is skipped. "event" tells the app what
+     * happened: CLAIM_SUBMITTED, CLAIM_APPROVED, CLAIM_REJECTED, ITEM_CLAIMED or ITEM_EXPIRED.
      */
     @Transactional
     public void claimUpdate(String userId, String event, String message, String itemId, String claimId) {
@@ -42,7 +46,8 @@ public class NotificationService {
         save(userId, NotificationType.CLAIM_UPDATE, payload);
     }
 
-    /** Tells the owner of a lost report that a found item may be theirs. Joins the caller's transaction. */
+
+    /** Tells the owner of a lost report that a found item may be theirs. */
     @Transactional
     public void matchFound(String userId, String message, String lostItemId, String foundItemId) {
         if (userId == null) return;
@@ -54,6 +59,7 @@ public class NotificationService {
         save(userId, NotificationType.MATCH_FOUND, payload);
     }
 
+    /** Writes the notification row. */
     private void save(String userId, NotificationType type, Map<String, Object> payload) {
         Notification n = new Notification();
         n.setUserId(userId);
@@ -62,6 +68,7 @@ public class NotificationService {
         notifications.save(n);
     }
 
+    /** The user's notifications, newest first. Page size is capped at 50. */
     @Transactional(readOnly = true)
     public PageResponse<NotificationResponse> list(String userId, int page, int size) {
         int safePage = Math.max(page, 0);
@@ -73,10 +80,12 @@ public class NotificationService {
                 result.getTotalElements(), result.getTotalPages());
     }
 
+    /** Number for the unread badge. */
     @Transactional(readOnly = true)
     public long unreadCount(String userId) {
         return notifications.countByUserIdAndReadFalse(userId);
     }
+
 
     /** Someone else's notification looks exactly like a missing one: 404. */
     @Transactional
@@ -88,6 +97,7 @@ public class NotificationService {
         return NotificationResponse.from(notifications.save(n));
     }
 
+    /** One UPDATE for all of the user's unread notifications. Returns how many changed. */
     @Transactional
     public int markAllRead(String userId) {
         return notifications.markAllRead(userId);

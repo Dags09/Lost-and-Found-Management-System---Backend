@@ -3,6 +3,7 @@ package com.lostandfound.backend.models;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 
+/** One row of an item's photo list (table item_images): which image, and its position (0 = first). */
 @Embeddable
 public class ItemImage {
     // Points at a row in the "images" table (the bytes live there).

@@ -11,6 +11,11 @@ import java.io.IOException;
 import java.util.Map;
 
 
+/**
+ * Per-IP rate limit on the public auth endpoints (login, register, ...) to slow down password
+ * guessing and email flooding. Behind a proxy set server.forward-headers-strategy=native so
+ * the real client IP is used.
+ */
 @Component
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
@@ -34,6 +39,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
         this.limiter = limiter;
     }
 
+    /** Only POSTs to the listed auth URLs are limited; everything else passes straight through. */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest req) {
         return !"POST".equals(req.getMethod()) || !RULES.containsKey(req.getRequestURI());
@@ -43,6 +49,7 @@ public class AuthRateLimitFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res,
                                     FilterChain chain) throws ServletException, IOException {
         Rule rule = RULES.get(req.getRequestURI());
+        // Counted per client IP and per URL. 0 = allowed, otherwise seconds until the window resets.
         long retryAfter = limiter.tryAcquire("auth:" + req.getRemoteAddr() + ":" + req.getRequestURI(),
                 rule.max(), rule.windowMs());
         if (retryAfter > 0) {

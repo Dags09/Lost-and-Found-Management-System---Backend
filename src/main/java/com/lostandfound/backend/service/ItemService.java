@@ -31,6 +31,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * Found items: report, edit, delete, public search, photos. Every change checks that the item
+ * exists (404), belongs to the caller (403), is still OPEN (409) and has no pending claim.
+ */
 @Service
 public class ItemService {
 
@@ -57,6 +61,10 @@ public class ItemService {
         this.matching = matching;
     }
 
+    /**
+     * Reports a found item. Matching runs after the item is saved (this method is deliberately not
+     * @Transactional): a match row points at the item, so it must already be committed.
+     */
     public ItemPublicResponse create(String reporterId, ItemCreateRequest req) {
         Items i = new Items();
         i.setReporterId(reporterId);
@@ -67,6 +75,7 @@ public class ItemService {
         return ItemPublicResponse.from(saved);
     }
 
+    /** Edits an item you reported. An edit can create new match suggestions; existing ones are kept. */
     public MyItemResponse update(String id, String userId, ItemCreateRequest req) {
         Items i = findOwnedOpenItem(id, userId);
         apply(i, req);
@@ -75,6 +84,10 @@ public class ItemService {
         return MyItemResponse.from(saved);
     }
 
+    /**
+     * Deletes your own OPEN item. The database cascades its photo rows and old claims away; the
+     * pictures themselves are removed afterwards, once nothing points at them.
+     */
     @Transactional
     public void delete(String id, String userId) {
         Items i = findOwnedOpenItem(id, userId);
@@ -90,6 +103,10 @@ public class ItemService {
         imageStorage.deleteAll(imageIds);    // now nothing points at the images any more
     }
 
+    /**
+     * Public listing of OPEN found items. With words in q: prefix + fuzzy search, best match first.
+     * Without: newest first. Page size is capped at 50.
+     */
     public PageResponse<ItemPublicResponse> search(String q, String categoryId, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 50);
@@ -115,6 +132,7 @@ public class ItemService {
     /** "black  wallet!" -> "black | wallet" (match ANY word). Null when nothing searchable is left. */
     private static final int MAX_WORDS = 8;
 
+    /** Splits the search text into lowercase letters/digits (so it is safe to put into a tsquery). */
     private static List<String> words(String q) {
         if (q == null || q.isBlank()) return List.of();
         return Arrays.stream(q.trim().toLowerCase().split("[^\\p{L}\\p{N}]+"))
@@ -129,6 +147,7 @@ public class ItemService {
                 : words.stream().map(w -> w + ":*").collect(Collectors.joining(" | "));
     }
 
+    /** Lost reports are private, so asking for one here is a 404. */
     public ItemPublicResponse getPublic(String id) {
         return items.findById(id)
                 .filter(i -> i.getType() == ItemType.FOUND)   // lost reports are private
@@ -136,6 +155,7 @@ public class ItemService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Item not found"));
     }
 
+    /** Found items reported by this user, newest first. Includes the private distinguishing marks. */
     public List<MyItemResponse> listMine(String reporterId) {
         return items.findByReporterIdAndTypeOrderByCreatedAtDesc(reporterId, ItemType.FOUND)
                 .stream()
@@ -143,6 +163,7 @@ public class ItemService {
                 .toList();
     }
 
+    /** Adds a photo (max 3). Only the owner, only while the item is OPEN. */
     @Transactional
     public MyItemResponse addImage(String id, String userId, MultipartFile file) {
         Items i = findOwnedOpenItem(id, userId);
@@ -153,6 +174,7 @@ public class ItemService {
         return MyItemResponse.from(items.save(i));
     }
 
+    /** Removes the photo at that position and renumbers the rest so positions stay 0, 1, 2. */
     @Transactional
     public MyItemResponse removeImage(String id, String userId, int position) {
         Items i = findOwnedOpenItem(id, userId);

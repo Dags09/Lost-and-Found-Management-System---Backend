@@ -6,6 +6,10 @@ import jakarta.validation.constraints.PastOrPresent;
 
 import java.time.LocalDate;
 
+/**
+ * Body for reporting a FOUND item (POST /v1/items) and for editing it. distinguishingMarks is
+ * private: it is only used to check owners and is never returned in public responses.
+ */
 public record ItemCreateRequest(
         @NotBlank String name,
         @NotBlank String description,

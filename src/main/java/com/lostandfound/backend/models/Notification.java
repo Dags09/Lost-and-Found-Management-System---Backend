@@ -12,6 +12,7 @@ import com.lostandfound.backend.models.enumRoleStatusTypes.NotificationType;
 import org.springframework.data.annotation.CreatedDate;
 
 
+/** An in-app notification. payload is free-form JSON (event, message, itemId, ...). */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "notifications")

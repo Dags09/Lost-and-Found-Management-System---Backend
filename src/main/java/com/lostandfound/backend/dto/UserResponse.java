@@ -3,6 +3,7 @@ package com.lostandfound.backend.dto;
 import com.lostandfound.backend.models.Users;
 import com.lostandfound.backend.models.enumRoleStatusTypes.Role;
 
+/** Safe view of a user. Never includes the password hash. */
 public record UserResponse(
         String id,
         String firstName,

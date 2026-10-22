@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 
+/** /v1/admin/users: user management. Admin only. */
 @RestController
 @RequestMapping("/v1/admin/users")
 @PreAuthorize("hasRole('Admin')")
@@ -24,6 +25,7 @@ public class AdminUserController {
         this.service = service;
     }
 
+    /** GET /v1/admin/users?role=&page=&size= : users, newest first. */
     @GetMapping
     public PageResponse<UserResponse> list(@RequestParam(required = false) Role role,
                                            @RequestParam(defaultValue = "0") int page,
@@ -31,12 +33,14 @@ public class AdminUserController {
         return service.list(role, page, size);
     }
 
+    /** POST /v1/admin/users/staff : create a Moderator or Admin (email already verified). */
     @PostMapping("/staff")
     @ResponseStatus(HttpStatus.CREATED)
     public UserResponse createStaff(@Valid @RequestBody StaffCreateRequest req) {
         return service.createStaff(req);
     }
 
+    /** PATCH /v1/admin/users/{id}/role : promote or demote (not yourself). */
     @PatchMapping("/{id}/role")
     public UserResponse changeRole(@PathVariable String id, Authentication authentication,
                                    @Valid @RequestBody RoleChangeRequest req) {

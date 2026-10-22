@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 
+/** Database access for uploaded pictures (table images). */
 public interface ImageFileRepository extends JpaRepository<ImageFile, String> {
 
     // Bulk delete by id: does not load the (large) bytes first.

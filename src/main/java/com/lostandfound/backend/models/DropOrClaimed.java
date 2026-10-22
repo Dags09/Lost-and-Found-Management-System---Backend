@@ -5,6 +5,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import jakarta.validation.constraints.NotBlank;
 
+/** A drop-off / pick-up point: where found items are left and later collected (table drop_locations). */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "drop_locations")

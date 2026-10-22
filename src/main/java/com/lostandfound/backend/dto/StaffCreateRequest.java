@@ -5,6 +5,7 @@ import com.lostandfound.backend.validation.StrongPassword;
 import jakarta.validation.constraints.*;
 
 
+/** Body for an Admin creating a Moderator or Admin account. No student ID is needed for staff. */
 public record StaffCreateRequest(
         @NotBlank String firstName,
         @NotBlank String lastName,

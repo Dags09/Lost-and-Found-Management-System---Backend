@@ -9,8 +9,10 @@ import org.springframework.data.repository.query.Param;
 import java.time.Instant;
 import java.util.Optional;
 
+/** Database access for one-time email tokens (verify email, reset password). */
 public interface AuthTokenRepository extends JpaRepository<AuthToken, String> {
 
+    /** Looks a token up by the SHA-256 hash of the raw value from the email link. */
     Optional<AuthToken> findByTokenHash(String tokenHash);
 
     /** Atomically marks a token as used. Returns 0 if it was already used or has expired. */
@@ -24,6 +26,7 @@ public interface AuthTokenRepository extends JpaRepository<AuthToken, String> {
     int invalidateUnused(@Param("userId") String userId, @Param("type") AuthToken.Type type,
                          @Param("now") Instant now);
 
+    /** Housekeeping for AuthCleanupJob. */
     @Modifying
     @Query("delete from AuthToken t where t.expiresAt < :cutoff")
     int deleteExpiredBefore(@Param("cutoff") Instant cutoff);

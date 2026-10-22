@@ -56,6 +56,7 @@ public class ImageStorageService {
         images.deleteByIds(List.of(imageId));
     }
 
+    /** Deletes in one statement without loading the (large) image bytes first. */
     @Transactional
     public void deleteAll(Collection<String> imageIds) {
         if (imageIds == null || imageIds.isEmpty()) return;

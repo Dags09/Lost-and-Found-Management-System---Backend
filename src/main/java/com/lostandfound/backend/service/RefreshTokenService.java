@@ -15,11 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.util.UUID;
 
+
 /**
  * Server-side record of every refresh token, so sessions can be ended.
- *
- * - Login starts a new "family". Each refresh revokes the used token and issues a new one in the same family.
- * - If an already-used token shows up again (it was probably stolen), the whole family is revoked.
+ * - Login starts a new "family". Each refresh revokes the used token and issues one in the same family.
+ * - If an already-used token shows up again (probably stolen), the whole family is revoked.
  * - Logout revokes the family. Password reset and logout-all revoke every token of the user.
  */
 @Service
@@ -35,24 +35,28 @@ public class RefreshTokenService {
         this.jwt = jwt;
     }
 
+
     /** Starts a new session (login). Returns the refresh JWT. */
     @Transactional
     public String startSession(Users u) {
         return issue(u, UUID.randomUUID().toString());
     }
 
-    /** Issues the next token of an existing session (used after {@link #rotate}). */
+
+    /** Issues the next token of an existing session (used after rotate). */
     @Transactional
     public String continueSession(Users u, String familyId) {
         return issue(u, familyId);
     }
 
+    /** Saves a row for the token (its id is the JWT "jti") and signs the JWT. */
     private String issue(Users u, String familyId) {
         String jti = UUID.randomUUID().toString();
         Instant expires = Instant.now().plusMillis(jwt.getRefreshExpiresMs());
         tokens.save(new RefreshToken(jti, u.getId(), familyId, expires));
         return jwt.generateRefreshToken(u.getId(), u.getRole().name(), jti);
     }
+
 
     /**
      * Validates and consumes a refresh token. A token can be used exactly once.
@@ -67,18 +71,21 @@ public class RefreshTokenService {
             throw invalid();
         }
         String jti = claims.getId();
-        if (jti == null) throw invalid();            // token from before revocation existed: log in again
+        if (jti == null) throw invalid();
 
         RefreshToken row = tokens.findById(jti).orElseThrow(RefreshTokenService::invalid);
         Instant now = Instant.now();
         if (row.getExpiresAt().isBefore(now)) throw invalid();
 
+        // Atomic: returns 0 if the token was already used. Then someone is replaying an old token, so
+        // the whole session is ended.
         if (tokens.revokeIfActive(jti, now) == 0) {
-            tokens.revokeFamily(row.getFamilyId(), now);   // reuse detected: end the whole session
+            tokens.revokeFamily(row.getFamilyId(), now);
             throw invalid();
         }
         return new Rotation(row.getUserId(), row.getFamilyId());
     }
+
 
     /** Logout: ends the session this token belongs to. Never fails: a bad or expired token is ignored. */
     @Transactional
@@ -95,12 +102,14 @@ public class RefreshTokenService {
         tokens.findById(jti).ifPresent(t -> tokens.revokeFamily(t.getFamilyId(), Instant.now()));
     }
 
+
     /** Ends every session of a user (logout everywhere, password reset). */
     @Transactional
     public void revokeAll(String userId) {
         tokens.revokeAllForUser(userId, Instant.now());
     }
 
+    /** One generic error for every failure, so the reason is not leaked. */
     private static ApiException invalid() {
         return new ApiException(HttpStatus.UNAUTHORIZED, "Invalid or expired refresh token");
     }

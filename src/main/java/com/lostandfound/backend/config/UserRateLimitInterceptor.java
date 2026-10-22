@@ -12,6 +12,11 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 
+/**
+ * Per-user rate limits for the POST endpoints that create things (claims, reports, uploads), so a
+ * single account cannot flood the system. The public auth endpoints are limited per IP by
+ * AuthRateLimitFilter instead.
+ */
 @Component
 public class UserRateLimitInterceptor implements HandlerInterceptor {
 
@@ -35,6 +40,10 @@ public class UserRateLimitInterceptor implements HandlerInterceptor {
         this.limiter = limiter;
     }
 
+    /**
+     * Runs before the controller. Only POSTs by a logged-in user that match a rule are counted; when
+     * the limit is hit the request ends with 429 and a Retry-After header.
+     */
     @Override
     public boolean preHandle(HttpServletRequest req, HttpServletResponse res, Object handler) throws Exception {
         if (!"POST".equals(req.getMethod())) return true;

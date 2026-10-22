@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+/** Student endpoints for claims: submit one for an item, list your own, load a proof photo. */
 @RestController
 @RequestMapping("/v1")
 public class ClaimController {
@@ -23,6 +24,7 @@ public class ClaimController {
         this.service = service;
     }
 
+    /** POST /v1/items/{itemId}/claims (multipart) : proofDescription + proofImage are both required. */
     @PostMapping(value = "/items/{itemId}/claims", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public ClaimResponse submit(@PathVariable String itemId,
@@ -32,11 +34,15 @@ public class ClaimController {
         return service.submit(itemId, (String) authentication.getPrincipal(), proofDescription, proofImage);
     }
 
+    /** GET /v1/claims/mine : the logged-in student's own claims, newest first. */
     @GetMapping("/claims/mine")
     public List<ClaimResponse> mine(Authentication authentication) {
         return service.listMine((String) authentication.getPrincipal());
     }
 
+    /**
+     * GET /v1/claims/{claimId}/proof : the proof photo. Only the claimant and staff; not cached (noStore).
+     */
     @GetMapping("/claims/{claimId}/proof")
     public ResponseEntity<byte[]> proof(@PathVariable String claimId, Authentication authentication) {
         boolean staff = authentication.getAuthorities().stream()

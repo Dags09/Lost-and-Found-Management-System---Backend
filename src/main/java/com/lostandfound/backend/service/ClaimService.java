@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/** Student side of claims: submit a claim with proof, view own claims, load the proof photo. */
 @Service
 public class ClaimService {
 
@@ -52,6 +53,12 @@ public class ClaimService {
         this.notifications = notifications;
     }
 
+    /**
+     * Submits a claim for a found item.
+     * Rules: the item must be a FOUND item, still OPEN, not reported by the claimant, and the claimant
+     * may have only one PENDING claim per item (also enforced by a unique index in schema.sql).
+     * The proof photo and the claim are saved in one transaction, so a failure leaves no orphan photo.
+     */
     @Transactional
     public ClaimResponse submit(String itemId, String claimantId,
                                 String proofDescription, MultipartFile proofImage) {
@@ -95,6 +102,9 @@ public class ClaimService {
         return ClaimResponse.from(saved);
     }
 
+    /**
+     * Only the claimant and staff may load the proof photo. Anyone else gets 404, as if it did not exist.
+     */
     @Transactional(readOnly = true)
     public ImageFile getProofImage(String claimId, String userId, boolean isStaff) {
         Claim c = claims.findById(claimId)
@@ -106,6 +116,10 @@ public class ClaimService {
         return imageStorage.get(c.getProofImageId(), Purpose.PROOF);
     }
 
+    /**
+     * The student's own claims, newest first. For APPROVED claims it also loads the drop-off place, so
+     * the student knows where to collect the item.
+     */
     @Transactional(readOnly = true)
     public List<ClaimResponse> listMine(String claimantId) {
         List<Claim> mine = claims.findByClaimantIdOrderByCreatedAtDesc(claimantId);

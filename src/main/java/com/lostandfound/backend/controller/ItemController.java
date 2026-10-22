@@ -14,6 +14,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+/** /v1/items: found items. Browsing and viewing is for any logged-in user; changing is owner only. */
 @RestController
 @RequestMapping("/v1/items")
 public class ItemController {
@@ -40,11 +41,13 @@ public class ItemController {
         return service.search(q, categoryId, page, size);
     }
 
+    /** GET /v1/items/mine : found items the logged-in user reported (with private marks). */
     @GetMapping("/mine")
     public List<MyItemResponse> mine(Authentication authentication) {
         return service.listMine((String) authentication.getPrincipal());
     }
 
+    /** GET /v1/items/{id} : public detail of a found item. */
     @GetMapping("/{id}")
     public ItemPublicResponse get(@PathVariable String id) {
         return service.getPublic(id);
@@ -57,6 +60,7 @@ public class ItemController {
         return service.update(id, (String) authentication.getPrincipal(), req);
     }
 
+    /** DELETE /v1/items/{id} : owner only, while OPEN and with no pending claim. */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable String id, Authentication authentication) {

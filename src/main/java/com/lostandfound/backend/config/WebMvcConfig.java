@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+/** Registers the per-user rate-limit interceptor for every /v1 URL. */
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
 

@@ -11,6 +11,7 @@ import org.springframework.data.annotation.CreatedDate;
 
 import java.time.Instant;
 
+/** A user account (Student, Moderator or Admin). password holds a BCrypt hash, never plain text. */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "users")

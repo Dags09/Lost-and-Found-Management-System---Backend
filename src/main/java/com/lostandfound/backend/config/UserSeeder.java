@@ -47,6 +47,7 @@ public class UserSeeder implements ApplicationRunner {
         this.studentPassword = studentPassword;
     }
 
+    /** Runs once at startup (only when app.seed.enabled=true). */
     @Override
     public void run(ApplicationArguments args) {
         seed(Role.Admin,     "Admin",     "User", null,       "admin@lostandfound.local",     "09000000001", adminPassword);

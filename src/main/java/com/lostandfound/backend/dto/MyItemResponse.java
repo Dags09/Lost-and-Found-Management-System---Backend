@@ -8,6 +8,10 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
+/**
+ * An item as its own reporter sees it. Unlike ItemPublicResponse it includes distinguishingMarks
+ * and updatedAt.
+ */
 public record MyItemResponse(
         String id,
         String name,

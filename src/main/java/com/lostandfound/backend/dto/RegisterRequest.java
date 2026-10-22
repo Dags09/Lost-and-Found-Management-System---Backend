@@ -3,6 +3,10 @@ package com.lostandfound.backend.dto;
 import com.lostandfound.backend.validation.StrongPassword;
 import jakarta.validation.constraints.*;
 
+/**
+ * Body of POST /v1/auth/register (students sign themselves up). Student ID: digits only.
+ * Phone: 11 digits starting with 09. Password: see @StrongPassword.
+ */
 public record RegisterRequest(
         @NotBlank String firstName,
         @NotBlank String lastName,

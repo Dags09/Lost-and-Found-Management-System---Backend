@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.Instant;
 
-/** Nightly: deletes expired refresh tokens and email tokens so the tables stay small. */
+/** Nightly housekeeping: deletes expired refresh tokens and email tokens so the tables stay small. */
 @Component
 public class AuthCleanupJob {
 
@@ -25,6 +25,9 @@ public class AuthCleanupJob {
         this.authTokens = authTokens;
     }
 
+    /**
+     * Deletes tokens that expired more than a day ago. Schedule: app.auth.cleanup-cron (default 03:30 daily).
+     */
     @Scheduled(cron = "${app.auth.cleanup-cron:0 30 3 * * *}")
     @Transactional
     public void purge() {

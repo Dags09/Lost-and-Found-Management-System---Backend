@@ -7,7 +7,7 @@ import java.lang.annotation.*;
 
 /**
  * THE password rule for the whole app (register, reset, staff creation):
- * 8 to 72 bytes (BCrypt ignores/rejects anything longer), with at least one letter and one digit.
+ * 8 to 72 bytes (BCrypt rejects anything longer), with at least one letter and one digit.
  */
 @Documented
 @Constraint(validatedBy = StrongPasswordValidator.class)

@@ -21,7 +21,11 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 import java.util.Objects;
 
-/** Lost reports: private to the person who made them (and, later, to staff). */
+
+/**
+ * Lost reports ("I lost something"). Private to the reporter and staff. Creating or editing a
+ * report triggers matching against the open found items.
+ */
 @Service
 public class LostItemService {
 
@@ -43,18 +47,19 @@ public class LostItemService {
         this.matching = matching;
     }
 
-    // create and update are NOT @Transactional on purpose: the report must be saved (committed)
-    // before matching runs, because a match row points at it. Each save is atomic by itself.
+
+    /** Creates a lost report. type is set here, never taken from the client. */
     public MyItemResponse create(String reporterId, LostItemRequest req) {
         Items i = new Items();
         i.setReporterId(reporterId);
-        i.setType(ItemType.LOST);            // set by the server, never by the client
+        i.setType(ItemType.LOST);            
         apply(i, req);
         Items saved = items.save(i);
         findMatches(saved);
         return MyItemResponse.from(saved);
     }
 
+    /** Edits your own OPEN lost report. */
     public MyItemResponse update(String id, String userId, LostItemRequest req) {
         Items i = findOwnedOpenLost(id, userId);
         apply(i, req);
@@ -63,6 +68,7 @@ public class LostItemService {
         return MyItemResponse.from(saved);
     }
 
+    /** Deletes your own OPEN lost report and its photos. */
     @Transactional
     public void delete(String id, String userId) {
         Items i = findOwnedOpenLost(id, userId);
@@ -73,6 +79,7 @@ public class LostItemService {
         imageStorage.deleteAll(imageIds);    // now nothing points at the pictures any more
     }
 
+    /** Adds a photo (max 3). Lost-report photos are private: only the owner and staff can load them. */
     @Transactional
     public MyItemResponse addImage(String id, String userId, MultipartFile file) {
         Items i = findOwnedOpenLost(id, userId);
@@ -83,6 +90,7 @@ public class LostItemService {
         return MyItemResponse.from(items.save(i));
     }
 
+    /** Removes the photo at that position and renumbers the rest. */
     @Transactional
     public MyItemResponse removeImage(String id, String userId, int position) {
         Items i = findOwnedOpenLost(id, userId);
@@ -123,6 +131,7 @@ public class LostItemService {
         return MyItemResponse.from(items.save(i));
     }
 
+    /** The caller's own lost reports, newest first. */
     @Transactional(readOnly = true)
     public List<MyItemResponse> listMine(String reporterId) {
         return items.findByReporterIdAndTypeOrderByCreatedAtDesc(reporterId, ItemType.LOST)
@@ -154,6 +163,10 @@ public class LostItemService {
         return i;
     }
 
+    /**
+     * Copies the request onto the report after checking the category exists. A lost report has no
+     * drop-off point (you do not have the item), so dropLocationId is always null.
+     */
     private void apply(Items i, LostItemRequest req) {
         if (!categories.existsById(req.categoryId()))
             throw new ApiException(HttpStatus.BAD_REQUEST, "Category does not exist");

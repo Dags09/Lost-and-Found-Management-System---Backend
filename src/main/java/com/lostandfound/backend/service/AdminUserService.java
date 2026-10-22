@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/** Admin-only user management: list users, create staff accounts, change roles. */
 @Service
 public class AdminUserService {
 
@@ -28,7 +29,7 @@ public class AdminUserService {
         this.encoder = encoder;
     }
 
-    /** Newest first. Pass a role to see only Students, Moderators or Admins. */
+    /** Newest first. Pass a role to see only Students, Moderators or Admins. Page size is capped at 50. */
     @Transactional(readOnly = true)
     public PageResponse<UserResponse> list(Role role, int page, int size) {
         int safePage = Math.max(page, 0);
@@ -64,8 +65,9 @@ public class AdminUserService {
     }
 
     /**
-     * Promote or demote an existing account. You cannot change your own role, so the
-     * last Admin can never lock everyone out by accident.
+     * Promote or demote an account. You cannot change your own role, so the last Admin can never
+     * lock everyone out by accident. The new role applies at once: JwtAuthFilter reads the role from
+     * the database on every request, not from the token.
      */
     @Transactional
     public UserResponse changeRole(String userId, String adminId, Role role) {

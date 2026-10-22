@@ -13,6 +13,11 @@ import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
+/**
+ * Queries for found items and lost reports. Both live in the items table; the type column tells
+ * them apart. The @Modifying updates flip a status in one SQL step so two requests at the same
+ * time cannot both win.
+ */
 public interface ItemRepository extends JpaRepository<Items, String> {
     List<Items> findByStatusOrderByCreatedAtDesc(ItemStatus status);
     List<Items> findByReporterIdOrderByCreatedAtDesc(String reporterId);
@@ -37,7 +42,9 @@ public interface ItemRepository extends JpaRepository<Items, String> {
                                       @Param("pattern") String pattern,
                                       Pageable pageable);
 
+    /** Blocks deleting a category that is still in use. */
     boolean existsByCategoryId(String categoryId);
+    /** Blocks deleting a drop-off location that is still in use. */
     boolean existsByDropLocationId(String dropLocationId);
 
     /**
@@ -47,6 +54,10 @@ public interface ItemRepository extends JpaRepository<Items, String> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update Items i set i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.CLAIMED, "
             + "i.updatedAt = :now where i.id = :id and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN")
+    /**
+     * Flips an item OPEN -> CLAIMED in one database step. Returns 1 if it did, 0 if the item was no
+     * longer OPEN.
+     */
     int markClaimedIfOpen(@Param("id") String id, @Param("now") java.time.Instant now);
 
     /**

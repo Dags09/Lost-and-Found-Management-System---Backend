@@ -6,7 +6,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 
 
+/** Database access for item categories. */
 public interface CategoryRepository extends JpaRepository<Categories, String> {
+    /** True if a category with this name exists, ignoring upper/lower case. */
     boolean existsByNameIgnoreCase(String name);
 }
 //public interface CategoryRepository extends JpaRepository<Categories, String>

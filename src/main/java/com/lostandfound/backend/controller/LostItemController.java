@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
+/** /v1/lost-items: "I lost something" reports. Everything here is private to the reporter. */
 @RestController
 @RequestMapping("/v1/lost-items")
 public class LostItemController {
@@ -29,12 +30,14 @@ public class LostItemController {
         this.matching = matching;
     }
 
+    /** POST /v1/lost-items : file a lost report. */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public MyItemResponse create(Authentication authentication, @Valid @RequestBody LostItemRequest req) {
         return service.create((String) authentication.getPrincipal(), req);
     }
 
+    /** GET /v1/lost-items/mine : the caller's own lost reports. */
     @GetMapping("/mine")
     public List<MyItemResponse> mine(Authentication authentication) {
         return service.listMine((String) authentication.getPrincipal());
@@ -46,6 +49,7 @@ public class LostItemController {
         return service.update(id, (String) authentication.getPrincipal(), req);
     }
 
+    /** DELETE /v1/lost-items/{id} : owner only, while OPEN. */
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable String id, Authentication authentication) {
@@ -65,6 +69,7 @@ public class LostItemController {
         return service.removeImage(id, (String) authentication.getPrincipal(), position);
     }
 
+    /** GET /v1/lost-items/{id}/images/{position} : owner and staff only; not cached (noStore). */
     @GetMapping("/{id}/images/{position}")
     public ResponseEntity<byte[]> image(@PathVariable String id, @PathVariable int position,
                                         Authentication authentication) {
@@ -78,17 +83,20 @@ public class LostItemController {
                 .body(img.getData());
     }
 
+    /** GET /v1/lost-items/{id}/matches : found items that may be yours, best first. */
     @GetMapping("/{id}/matches")
     public List<MatchResponse> matches(@PathVariable String id, Authentication authentication) {
         return matching.listForLost(id, (String) authentication.getPrincipal());
     }
 
+    /** POST /v1/lost-items/{id}/matches/{matchId}/dismiss : "that's not mine". */
     @PostMapping("/{id}/matches/{matchId}/dismiss")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void dismiss(@PathVariable String id, @PathVariable String matchId, Authentication authentication) {
         matching.dismiss(id, matchId, (String) authentication.getPrincipal());
     }
 
+    /** POST /v1/lost-items/{id}/close : "I found it myself". The report stops being matched. */
     @PostMapping("/{id}/close")
     public MyItemResponse close(@PathVariable String id, Authentication authentication) {
         return service.close(id, (String) authentication.getPrincipal());

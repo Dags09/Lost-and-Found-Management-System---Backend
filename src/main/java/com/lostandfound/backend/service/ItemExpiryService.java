@@ -14,6 +14,11 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+/**
+ * Closes items nobody dealt with: found items after app.item-expiry.days (default 90) and lost
+ * reports after app.item-expiry.lost-days (default 180). An item with a pending claim never
+ * expires. Runs on the schedule app.item-expiry.cron (default 03:00 daily).
+ */
 @Service
 public class ItemExpiryService {
 
@@ -38,6 +43,7 @@ public class ItemExpiryService {
         this.tx = tx;
     }
 
+    /** Entry point for the schedule (app.item-expiry.cron). */
     @Scheduled(cron = "${app.item-expiry.cron:0 0 3 * * *}")
     public void runScheduled() {
         int found = expire(ItemType.FOUND, foundDays);
@@ -51,6 +57,11 @@ public class ItemExpiryService {
         return expire(ItemType.FOUND, foundDays) + expire(ItemType.LOST, lostDays);
     }
 
+    /**
+     * Expires stale items in batches of app.item-expiry.batch-size. Each item is expired in its own
+     * transaction, so one failure does not stop the others. The loop stops when a batch expires
+     * nothing (everything raced or failed); otherwise it would repeat forever.
+     */
     private int expire(ItemType type, long days) {
         Instant now = Instant.now();
         Instant cutoff = now.minus(Duration.ofDays(days));
@@ -75,6 +86,10 @@ public class ItemExpiryService {
         return total;
     }
 
+    /**
+     * Expires one item and tells its reporter. markExpiredIfStale re-checks every condition in the
+     * same UPDATE, so a claim that arrived a moment ago wins over the expiry.
+     */
     private boolean expireOne(String id, ItemType type, long days, Instant cutoff, Instant now) {
         if (items.markExpiredIfStale(id, type, cutoff, now) != 1) return false;
         items.findById(id).ifPresent(i -> notifications.claimUpdate(

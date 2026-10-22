@@ -23,6 +23,7 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+
 /**
  * Suggests which found item may be a lost one. It only SUGGESTS: the owner still submits a claim
  * with proof and staff still approve it, so a wrong suggestion cannot hand anyone an item.
@@ -30,11 +31,14 @@ import java.util.stream.Collectors;
 @Service
 public class MatchService {
 
-    /** Score needed (out of 100) for a pair to be suggested. See MatchScorer. */
+
+    // Score needed (out of 100) for a pair to be suggested. See MatchScorer.
     static final int THRESHOLD = 55;
-    /** A new lost report is shown at most this many suggestions. */
+
+    // A new lost report is shown at most this many suggestions.
     static final int MAX_PER_LOST = 5;
-    /** How many open items of the same category one new report is compared against. */
+
+    // How many open items of the same category one new report is compared against.
     static final int CANDIDATES = 200;
 
     private final ItemRepository items;
@@ -46,6 +50,7 @@ public class MatchService {
         this.matches = matches;
         this.notifications = notifications;
     }
+
 
     /** A found item was reported (or edited): compare it with every open lost report in its category. */
     @Transactional
@@ -159,6 +164,7 @@ public class MatchService {
 
     // ---- helpers -------------------------------------------------------
 
+    /** Stores the suggestion. The score is saved as 0 to 1. */
     private void save(Items lost, Items found, int score) {
         Match m = new Match();
         m.setLostItemId(lost.getId());
@@ -176,6 +182,7 @@ public class MatchService {
             throw new ApiException(HttpStatus.FORBIDDEN, "You can only see matches for your own reports");
     }
 
+    /** Picks the fields MatchScorer compares. */
     private static MatchScorer.Facts facts(Items i) {
         return new MatchScorer.Facts(i.getName(), i.getDescription(), i.getColor(), i.getBrand(), i.getDateOccurred());
     }

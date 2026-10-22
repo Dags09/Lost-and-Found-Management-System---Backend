@@ -24,6 +24,10 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+/**
+ * Staff side of claims: list, approve and reject. Approving closes the item, rejects the other
+ * pending claims, settles the owner's lost report and notifies + emails everyone involved.
+ */
 @Service
 public class ClaimReviewService {
 
@@ -48,16 +52,26 @@ public class ClaimReviewService {
         this.matching = matching;
     }
 
+    /** Claims with the given status, oldest first, so the longest-waiting one is reviewed first. */
     @Transactional(readOnly = true)
     public List<StaffClaimResponse> list(ClaimStatus status) {
         return toStaffResponses(claims.findByStatusOrderByCreatedAtAsc(status));
     }
 
 
+    /**
+     * Approves a claim in ONE transaction:
+     * 1. flips the item OPEN -> CLAIMED (fails with 409 if someone else got there first),
+     * 2. settles the claimant's lost report and match suggestions,
+     * 3. rejects every other pending claim for the item,
+     * 4. notifies and emails the people involved.
+     * If any step fails, everything rolls back.
+     */
     @Transactional
     public StaffClaimResponse approve(String claimId, String staffId, String note) {
         Claim c = loadPendingClaim(claimId, staffId);
 
+        // One atomic UPDATE: if two staff approve different claims at the same moment, only one wins.
         if (items.markClaimedIfOpen(c.getItemId(), Instant.now()) == 0)
             throw new ApiException(HttpStatus.CONFLICT, "This item is no longer open");
 
@@ -94,6 +108,7 @@ public class ClaimReviewService {
     }
 
 
+    /** Rejects a claim. A reason is required because the student sees it. */
     @Transactional
     public StaffClaimResponse reject(String claimId, String staffId, String note) {
         String reason = clean(note);
@@ -112,6 +127,10 @@ public class ClaimReviewService {
 
     // ---- helpers
 
+    /**
+     * Publishes an email event. EmailService only sends it AFTER the transaction commits, so a
+     * rolled-back approval never sends an email.
+     */
     private void emailClaimant(Claim c, ClaimEmailEvent.Kind kind, String itemName,
                                String note, DropOrClaimed place, Instant at) {
         users.findById(c.getClaimantId()).ifPresent(u -> events.publishEvent(new ClaimEmailEvent(
@@ -122,6 +141,7 @@ public class ClaimReviewService {
     }
 
 
+    /** 404 if missing, 409 if already reviewed, 403 if staff try to review their own claim. */
     private Claim loadPendingClaim(String claimId, String staffId) {
         Claim c = claims.findById(claimId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Claim not found"));
@@ -132,6 +152,7 @@ public class ClaimReviewService {
         return c;
     }
 
+    /** Records the decision: who decided, when, and the note. */
     private void finish(Claim c, ClaimStatus status, String staffId, String note, Instant at) {
         c.setStatus(status);
         c.setReviewedBy(staffId);
@@ -140,10 +161,14 @@ public class ClaimReviewService {
         claims.save(c);
     }
 
+    /** Blank notes become null; otherwise trimmed. */
     private static String clean(String s) {
         return (s == null || s.isBlank()) ? null : s.trim();
     }
 
+    /**
+     * Builds the staff view in a few bulk lookups (users, items, drop-off places) instead of one per claim.
+     */
     private List<StaffClaimResponse> toStaffResponses(List<Claim> list) {
         if (list.isEmpty()) return List.of();
 

@@ -8,6 +8,10 @@ import org.springframework.data.annotation.CreatedDate;
 
 import java.time.Instant;
 
+/**
+ * A suggested pairing of a lost report and a found item, with a score from MatchScorer (0 to 1).
+ * It only suggests: the owner still has to submit a claim with proof.
+ */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "matches")

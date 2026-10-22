@@ -6,6 +6,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import jakarta.validation.constraints.NotBlank;
 
 
+/** Item category (Phones, Wallets, ...). The name is unique ignoring case (see schema.sql). */
 @Entity
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "categories")

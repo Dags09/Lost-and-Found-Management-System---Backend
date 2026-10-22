@@ -9,6 +9,10 @@ import java.time.LocalDate;
 import java.util.List;
 
 
+/**
+ * A lost report as staff see it: the private distinguishing marks plus the reporter's contact
+ * details, so staff can help the student who comes asking.
+ */
 public record StaffLostItemResponse(
         String id,
         String name,

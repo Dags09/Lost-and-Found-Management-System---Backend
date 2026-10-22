@@ -6,6 +6,10 @@ import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
 
 import java.util.List;
 
+/**
+ * One photo of an item as the API returns it: a URL the client can load, plus its position
+ * (0 = first). Lost-report photos get a login-protected URL, found-item photos the public one.
+ */
 public record ItemImageResponse(String url, int position) {
     public static List<ItemImageResponse> listFrom(Items i) {
         boolean lost = i.getType() == ItemType.LOST;
