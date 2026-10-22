@@ -160,3 +160,8 @@ CREATE INDEX IF NOT EXISTS ix_messages_item        ON messages (item_id);
 CREATE INDEX IF NOT EXISTS ix_messages_receiver    ON messages (receiver_id);
 
 CREATE INDEX IF NOT EXISTS ix_notifications_user   ON notifications (user_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_matches_pair ON matches (lost_item_id, found_item_id);
+
+ALTER TABLE images DROP CONSTRAINT IF EXISTS images_purpose_check;
+ALTER TABLE images ADD CONSTRAINT images_purpose_check CHECK (purpose IN ('ITEM','PROOF','LOST_ITEM'));

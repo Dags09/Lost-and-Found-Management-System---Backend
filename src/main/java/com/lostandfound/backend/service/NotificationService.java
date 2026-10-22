@@ -39,9 +39,25 @@ public class NotificationService {
         if (itemId != null) payload.put("itemId", itemId);
         if (claimId != null) payload.put("claimId", claimId);
 
+        save(userId, NotificationType.CLAIM_UPDATE, payload);
+    }
+
+    /** Tells the owner of a lost report that a found item may be theirs. Joins the caller's transaction. */
+    @Transactional
+    public void matchFound(String userId, String message, String lostItemId, String foundItemId) {
+        if (userId == null) return;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("event", "MATCH_SUGGESTED");
+        payload.put("message", message);
+        payload.put("lostItemId", lostItemId);
+        if (foundItemId != null) payload.put("foundItemId", foundItemId);
+        save(userId, NotificationType.MATCH_FOUND, payload);
+    }
+
+    private void save(String userId, NotificationType type, Map<String, Object> payload) {
         Notification n = new Notification();
         n.setUserId(userId);
-        n.setType(NotificationType.CLAIM_UPDATE);
+        n.setType(type);
         n.setPayload(payload);
         notifications.save(n);
     }

@@ -8,6 +8,7 @@ import com.lostandfound.backend.models.ImageFile;
 import com.lostandfound.backend.models.Items;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
+import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
 import com.lostandfound.backend.repository.ClaimRepository;
 import com.lostandfound.backend.repository.DropLocationRepository;
 import com.lostandfound.backend.repository.ItemRepository;
@@ -55,6 +56,8 @@ public class ClaimService {
 
         Items item = items.findById(itemId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Item not found"));
+        if (item.getType() != ItemType.FOUND)   // you can only claim something someone found
+            throw new ApiException(HttpStatus.NOT_FOUND, "Item not found");
         if (item.getStatus() != ItemStatus.OPEN)
             throw new ApiException(HttpStatus.CONFLICT, "This item is no longer open for claims");
         if (claimantId.equals(item.getReporterId()))

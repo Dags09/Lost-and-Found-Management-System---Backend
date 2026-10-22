@@ -30,15 +30,17 @@ public class ClaimReviewService {
     private final UserRepository users;
     private final DropLocationRepository dropLocations;
     private final NotificationService notifications;
+    private final MatchService matching;
 
     public ClaimReviewService(ClaimRepository claims, ItemRepository items,
                               UserRepository users, DropLocationRepository dropLocations,
-                              NotificationService notifications) {
+                              NotificationService notifications, MatchService matching) {
         this.claims = claims;
         this.items = items;
         this.users = users;
         this.dropLocations = dropLocations;
         this.notifications = notifications;
+        this.matching = matching;
     }
 
     /** The review queue, oldest first. Three bulk lookups, not one per claim. */
@@ -72,6 +74,9 @@ public class ClaimReviewService {
             notifications.claimUpdate(item.getReporterId(), "ITEM_CLAIMED",
                     "The owner of \"" + itemName + "\" has been found. Thank you for reporting it!",
                     c.getItemId(), null);
+
+        // If the owner had a lost report for this item, it is solved: close it, settle the matches.
+        matching.settleAfterApproval(c.getItemId(), c.getClaimantId());
 
         for (Claim other : claims.findByItemIdAndStatus(c.getItemId(), ClaimStatus.PENDING)) {
             if (!other.getId().equals(c.getId())) {

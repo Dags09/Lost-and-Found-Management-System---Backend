@@ -2,6 +2,7 @@ package com.lostandfound.backend.repository;
 
 import com.lostandfound.backend.models.Items;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
+import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import org.springframework.data.domain.Page;
@@ -15,6 +16,27 @@ import java.util.List;
 public interface ItemRepository extends JpaRepository<Items, String> {
     List<Items> findByStatusOrderByCreatedAtDesc(ItemStatus status);
     List<Items> findByReporterIdOrderByCreatedAtDesc(String reporterId);
+    List<Items> findByReporterIdAndTypeOrderByCreatedAtDesc(String reporterId, ItemType type);
+    /** Open items of one type and category: the pool a new report is compared against. */
+    @Query("select i from Items i where i.type = :type "
+            + "and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN "
+            + "and i.categoryId = :categoryId order by i.createdAt desc")
+    List<Items> findOpenByTypeAndCategory(@Param("type") ItemType type,
+                                          @Param("categoryId") String categoryId,
+                                          Pageable pageable);
+
+    /** Staff: all reports of one type and status, newest first (the sort comes from the Pageable). */
+    Page<Items> findByTypeAndStatus(ItemType type, ItemStatus status, Pageable pageable);
+
+    /** Staff: the same, narrowed to words in the name, description, colour or brand. pattern is "%word%". */
+    @Query("select i from Items i where i.type = :type and i.status = :status and ("
+            + "lower(i.name) like :pattern escape '!' or lower(i.description) like :pattern escape '!' "
+            + "or lower(i.color) like :pattern escape '!' or lower(i.brand) like :pattern escape '!')")
+    Page<Items> searchByTypeAndStatus(@Param("type") ItemType type,
+                                      @Param("status") ItemStatus status,
+                                      @Param("pattern") String pattern,
+                                      Pageable pageable);
+
     boolean existsByCategoryId(String categoryId);
     boolean existsByDropLocationId(String dropLocationId);
 
@@ -28,16 +50,17 @@ public interface ItemRepository extends JpaRepository<Items, String> {
     int markClaimedIfOpen(@Param("id") String id, @Param("now") java.time.Instant now);
 
     /**
-     * Ids of FOUND items that are still OPEN, older than {@code cutoff}, and have no PENDING claim
+     * Ids of items of one type (found or lost) that are still OPEN, older than {@code cutoff}, and have no PENDING claim
      * (an item someone is actively claiming is never expired). Oldest first; pass a page to cap the batch.
      */
-    @Query("select i.id from Items i where i.type = com.lostandfound.backend.models.enumRoleStatusTypes.ItemType.FOUND "
+    @Query("select i.id from Items i where i.type = :type "
             + "and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN "
             + "and i.createdAt < :cutoff "
             + "and not exists (select 1 from Claim c where c.itemId = i.id "
             + "and c.status = com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus.PENDING) "
             + "order by i.createdAt asc")
-    List<String> findExpirableIds(@Param("cutoff") java.time.Instant cutoff, Pageable pageable);
+    List<String> findExpirableIds(@Param("type") ItemType type,
+                                  @Param("cutoff") java.time.Instant cutoff, Pageable pageable);
 
     /**
      * Flips one item OPEN -> EXPIRED in a single database step, re-checking every condition so a claim
@@ -46,25 +69,26 @@ public interface ItemRepository extends JpaRepository<Items, String> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update Items i set i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.EXPIRED, "
             + "i.updatedAt = :now where i.id = :id "
-            + "and i.type = com.lostandfound.backend.models.enumRoleStatusTypes.ItemType.FOUND "
+            + "and i.type = :type "
             + "and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN "
             + "and i.createdAt < :cutoff "
             + "and not exists (select 1 from Claim c where c.itemId = i.id "
             + "and c.status = com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus.PENDING)")
     int markExpiredIfStale(@Param("id") String id,
+                           @Param("type") ItemType type,
                            @Param("cutoff") java.time.Instant cutoff,
                            @Param("now") java.time.Instant now);
 
     /** Public listing without a search phrase: open items, newest first. */
     @Query(value = """
             SELECT * FROM items i
-            WHERE i.status = 'OPEN'
+            WHERE i.status = 'OPEN' AND i.type = 'FOUND'
               AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))
             ORDER BY i.created_at DESC
             """,
             countQuery = """
             SELECT count(*) FROM items i
-            WHERE i.status = 'OPEN'
+            WHERE i.status = 'OPEN' AND i.type = 'FOUND'
               AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))
             """,
             nativeQuery = true)
@@ -78,7 +102,7 @@ public interface ItemRepository extends JpaRepository<Items, String> {
      */
     @Query(value = """
         SELECT * FROM items i
-        WHERE i.status = 'OPEN'
+        WHERE i.status = 'OPEN' AND i.type = 'FOUND'
           AND (i.search_vector @@ to_tsquery('english', :tsQuery)
                OR word_similarity(CAST(:phrase AS text), i.name) > 0.4)
           AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))
@@ -88,7 +112,7 @@ public interface ItemRepository extends JpaRepository<Items, String> {
         """,
             countQuery = """
         SELECT count(*) FROM items i
-        WHERE i.status = 'OPEN'
+        WHERE i.status = 'OPEN' AND i.type = 'FOUND'
           AND (i.search_vector @@ to_tsquery('english', :tsQuery)
                OR word_similarity(CAST(:phrase AS text), i.name) > 0.4)
           AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))

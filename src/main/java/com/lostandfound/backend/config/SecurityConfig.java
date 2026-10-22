@@ -32,7 +32,7 @@ public class SecurityConfig {
         this.jwtAuthFilter = jwtAuthFilter;
     }
 
-    //scrambles (hashes) passwords before saving them, so nobody can read them if the database leaks.
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -42,8 +42,6 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
 
-                //csrf.disable()turns off a browser-cookie protection you don’t need, because your
-                // apps use tokens instead.
 
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
@@ -72,7 +70,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // Lets the web admin (browser) call the API. The mobile app is not affected by CORS.
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource(@Value("${app.frontend-url}") String frontendUrl) {
         CorsConfiguration cfg = new CorsConfiguration();

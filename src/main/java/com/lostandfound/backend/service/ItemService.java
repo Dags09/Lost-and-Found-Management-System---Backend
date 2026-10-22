@@ -16,6 +16,8 @@ import com.lostandfound.backend.repository.CategoryRepository;
 import com.lostandfound.backend.repository.ClaimRepository;
 import com.lostandfound.backend.repository.DropLocationRepository;
 import com.lostandfound.backend.repository.ItemRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,6 +34,8 @@ import java.util.stream.Collectors;
 @Service
 public class ItemService {
 
+    private static final Logger log = LoggerFactory.getLogger(ItemService.class);
+
     private static final int MAX_IMAGES = 3;
 
     private final ItemRepository items;
@@ -39,15 +43,18 @@ public class ItemService {
     private final DropLocationRepository dropLocations;
     private final ImageStorageService imageStorage;
     private final ClaimRepository claims;
+    private final MatchService matching;
 
     public ItemService(ItemRepository items, CategoryRepository categories,
                        DropLocationRepository dropLocations,
-                       ImageStorageService imageStorage, ClaimRepository claims) {
+                       ImageStorageService imageStorage, ClaimRepository claims,
+                       MatchService matching) {
         this.items = items;
         this.categories = categories;
         this.dropLocations = dropLocations;
         this.imageStorage = imageStorage;
         this.claims = claims;
+        this.matching = matching;
     }
 
     public ItemPublicResponse create(String reporterId, ItemCreateRequest req) {
@@ -55,13 +62,17 @@ public class ItemService {
         i.setReporterId(reporterId);
         i.setType(ItemType.FOUND);            // Option A: every report is a found item
         apply(i, req);
-        return ItemPublicResponse.from(items.save(i));
+        Items saved = items.save(i);
+        findMatches(saved);
+        return ItemPublicResponse.from(saved);
     }
 
     public MyItemResponse update(String id, String userId, ItemCreateRequest req) {
         Items i = findOwnedOpenItem(id, userId);
         apply(i, req);
-        return MyItemResponse.from(items.save(i));
+        Items saved = items.save(i);
+        findMatches(saved);                  // an edit may create new matches; existing ones are kept
+        return MyItemResponse.from(saved);
     }
 
     @Transactional
@@ -120,12 +131,13 @@ public class ItemService {
 
     public ItemPublicResponse getPublic(String id) {
         return items.findById(id)
+                .filter(i -> i.getType() == ItemType.FOUND)   // lost reports are private
                 .map(ItemPublicResponse::from)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Item not found"));
     }
 
     public List<MyItemResponse> listMine(String reporterId) {
-        return items.findByReporterIdOrderByCreatedAtDesc(reporterId)
+        return items.findByReporterIdAndTypeOrderByCreatedAtDesc(reporterId, ItemType.FOUND)
                 .stream()
                 .map(MyItemResponse::from)
                 .toList();
@@ -158,10 +170,21 @@ public class ItemService {
 
     // ---- helpers -------------------------------------------------------
 
+    /** Matching is a bonus: if it fails, the report itself must still succeed. */
+    private void findMatches(Items saved) {
+        try {
+            matching.matchNewFound(saved);
+        } catch (RuntimeException e) {
+            log.warn("Matching failed for found item {}", saved.getId(), e);
+        }
+    }
+
     /** Loads an item and enforces: it exists (404), it is yours (403), it is still open (409). */
     private Items findOwnedOpenItem(String id, String userId) {
         Items i = items.findById(id)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Item not found"));
+        if (i.getType() != ItemType.FOUND)   // lost reports have their own endpoints
+            throw new ApiException(HttpStatus.NOT_FOUND, "Item not found");
         if (!userId.equals(i.getReporterId()))
             throw new ApiException(HttpStatus.FORBIDDEN, "You can only change your own reports");
         if (i.getStatus() != ItemStatus.OPEN)

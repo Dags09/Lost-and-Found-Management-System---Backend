@@ -20,6 +20,11 @@ public class ImageUrls {
         return imageId == null ? null : base + "/v1/images/" + imageId;
     }
 
+    /** Lost-report photos are private, so they are served by the lost-report routes, not /v1/images. */
+    public static String forLostImage(String itemId, int position) {
+        return itemId == null ? null : base + "/v1/lost-items/" + itemId + "/images/" + position;
+    }
+
     public static String forClaimProof(String claimId, String proofImageId) {
         return proofImageId == null ? null : base + "/v1/claims/" + claimId + "/proof";
     }
