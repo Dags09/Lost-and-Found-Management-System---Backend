@@ -2,6 +2,8 @@ package com.lostandfound.backend.repository;
 
 import com.lostandfound.backend.models.Users;
 import com.lostandfound.backend.models.enumRoleStatusTypes.Role;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,6 +15,8 @@ public interface UserRepository extends JpaRepository<Users, String> {
     boolean existsByEmail(String email);
     boolean existsByPhoneNum(String phoneNum);
     boolean existsByStudentId(String studentId);
+
+    Page<Users> findByRole(Role role, Pageable pageable);
 
     @Query("select u.role from Users u where u.id = :id")
     Optional<Role> findRoleById(@Param("id") String id);
