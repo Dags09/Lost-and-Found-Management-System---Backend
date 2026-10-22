@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.concurrent.TimeUnit;
 
-/** Serves item photos straight from the database. Claim proofs are NOT served here. */
+
 @RestController
 @RequestMapping("/v1/images")
 public class ImageController {
@@ -30,7 +30,6 @@ public class ImageController {
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(img.getContentType()))
                 .contentLength(img.getSizeBytes())
-                // an image id never changes its bytes, so browsers/apps can cache it for a long time
                 .cacheControl(CacheControl.maxAge(365, TimeUnit.DAYS).cachePublic().immutable())
                 .body(img.getData());
     }

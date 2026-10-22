@@ -32,13 +32,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(Map.of("error", message));
     }
 
-    // Errors you throw on purpose (404 not found, 409 conflict, ...)
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<Map<String, Object>> handleApi(ApiException e) {
         return error(e.getStatus(), e.getMessage());
     }
 
-    // @Valid failed: say which fields
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException e) {
         Map<String, String> fields = new LinkedHashMap<>();
@@ -53,13 +52,13 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.CONFLICT, "A record with the same unique value already exists");
     }
 
-    // Broken JSON, a bad date like "abc", or an enum value that doesn't exist
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleUnreadable(HttpMessageNotReadableException e) {
         return error(HttpStatus.BAD_REQUEST, "Request body is missing, malformed, or has an invalid value");
     }
 
-    // ?page=abc where a number is expected
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
         return error(HttpStatus.BAD_REQUEST, "Invalid value for parameter '" + e.getName() + "'");
@@ -75,14 +74,13 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "Content-Type must be application/json");
     }
 
-    // A URL that doesn't exist
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, Object>> handleNoResource(NoResourceFoundException e) {
         return error(HttpStatus.NOT_FOUND, "Not found");
     }
 
-    // @PreAuthorize failures are thrown inside the controller layer, so the catch-all
-    // below would swallow them as 500s. Handle them explicitly.
+
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleDenied(AccessDeniedException e) {
         return error(HttpStatus.FORBIDDEN, "You do not have permission to do this");
@@ -93,7 +91,6 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.UNAUTHORIZED, "Not logged in, or your session has expired");
     }
 
-    // Last resort: a real bug. Log the details for you, tell the client nothing sensitive.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleUnexpected(Exception e) {
         log.error("Unexpected error", e);

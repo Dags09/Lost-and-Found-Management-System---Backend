@@ -15,9 +15,9 @@ import java.time.Instant;
 public class Claim {
 
     @Column(name = "review_note", columnDefinition = "text")
-    private String reviewNote;           // staff's reason (used in 5b)
+    private String reviewNote;
     @Column(name = "reviewed_at")
-    private Instant reviewedAt;          // when staff decided (used in 5b)
+    private Instant reviewedAt;
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

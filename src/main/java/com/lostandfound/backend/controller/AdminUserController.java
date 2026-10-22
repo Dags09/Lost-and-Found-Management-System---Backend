@@ -12,7 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-/** Admin only. SecurityConfig already limits /v1/admin/** to Admin; @PreAuthorize is a second lock. */
+
 @RestController
 @RequestMapping("/v1/admin/users")
 @PreAuthorize("hasRole('Admin')")

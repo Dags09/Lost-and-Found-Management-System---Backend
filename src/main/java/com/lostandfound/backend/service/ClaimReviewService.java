@@ -11,6 +11,8 @@ import com.lostandfound.backend.repository.ClaimRepository;
 import com.lostandfound.backend.repository.DropLocationRepository;
 import com.lostandfound.backend.repository.ItemRepository;
 import com.lostandfound.backend.repository.UserRepository;
+import com.lostandfound.backend.mail.ClaimEmailEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,10 +33,13 @@ public class ClaimReviewService {
     private final DropLocationRepository dropLocations;
     private final NotificationService notifications;
     private final MatchService matching;
+    private final ApplicationEventPublisher events;
 
     public ClaimReviewService(ClaimRepository claims, ItemRepository items,
                               UserRepository users, DropLocationRepository dropLocations,
-                              NotificationService notifications, MatchService matching) {
+                              NotificationService notifications, MatchService matching,
+                              ApplicationEventPublisher events) {
+        this.events = events;
         this.claims = claims;
         this.items = items;
         this.users = users;
@@ -43,16 +48,12 @@ public class ClaimReviewService {
         this.matching = matching;
     }
 
-    /** The review queue, oldest first. Three bulk lookups, not one per claim. */
     @Transactional(readOnly = true)
     public List<StaffClaimResponse> list(ClaimStatus status) {
         return toStaffResponses(claims.findByStatusOrderByCreatedAtAsc(status));
     }
 
-    /**
-     * Approve: the item must still be OPEN. Claim -> APPROVED, item -> CLAIMED, and every other
-     * pending claim on the item is rejected. All in ONE transaction: it all happens or none of it does.
-     */
+
     @Transactional
     public StaffClaimResponse approve(String claimId, String staffId, String note) {
         Claim c = loadPendingClaim(claimId, staffId);
@@ -66,7 +67,6 @@ public class ClaimReviewService {
         Items item = items.findById(c.getItemId()).orElse(null);
         String itemName = item == null ? "the item" : item.getName();
 
-        // Tell the owner, and tell the finder their item found its owner.
         notifications.claimUpdate(c.getClaimantId(), "CLAIM_APPROVED",
                 "Your claim for \"" + itemName + "\" was approved. Open it to see where to collect the item.",
                 c.getItemId(), c.getId());
@@ -75,7 +75,10 @@ public class ClaimReviewService {
                     "The owner of \"" + itemName + "\" has been found. Thank you for reporting it!",
                     c.getItemId(), null);
 
-        // If the owner had a lost report for this item, it is solved: close it, settle the matches.
+        DropOrClaimed place = (item == null || item.getDropLocationId() == null) ? null
+                : dropLocations.findById(item.getDropLocationId()).orElse(null);
+        emailClaimant(c, ClaimEmailEvent.Kind.APPROVED, itemName, c.getReviewNote(), place, now);
+
         matching.settleAfterApproval(c.getItemId(), c.getClaimantId());
 
         for (Claim other : claims.findByItemIdAndStatus(c.getItemId(), ClaimStatus.PENDING)) {
@@ -84,12 +87,13 @@ public class ClaimReviewService {
                 notifications.claimUpdate(other.getClaimantId(), "CLAIM_REJECTED",
                         "Your claim for \"" + itemName + "\" was not approved: another claim for this item was approved.",
                         other.getItemId(), other.getId());
+                emailClaimant(other, ClaimEmailEvent.Kind.REJECTED, itemName, other.getReviewNote(), null, now);
             }
         }
         return toStaffResponses(List.of(c)).get(0);
     }
 
-    /** Reject: a reason is required, so the student knows what to fix. The item stays OPEN. */
+
     @Transactional
     public StaffClaimResponse reject(String claimId, String staffId, String note) {
         String reason = clean(note);
@@ -102,12 +106,22 @@ public class ClaimReviewService {
         notifications.claimUpdate(c.getClaimantId(), "CLAIM_REJECTED",
                 "Your claim for \"" + itemName + "\" was rejected: " + reason,
                 c.getItemId(), c.getId());
+        emailClaimant(c, ClaimEmailEvent.Kind.REJECTED, itemName, reason, null, c.getReviewedAt());
         return toStaffResponses(List.of(c)).get(0);
     }
 
-    // ---- helpers -------------------------------------------------------
+    // ---- helpers
 
-    /** 404 not found, 409 already reviewed, 403 your own claim. */
+    private void emailClaimant(Claim c, ClaimEmailEvent.Kind kind, String itemName,
+                               String note, DropOrClaimed place, Instant at) {
+        users.findById(c.getClaimantId()).ifPresent(u -> events.publishEvent(new ClaimEmailEvent(
+                kind, u.getEmail(), u.getFirstName(), itemName, c.getId(), at, note,
+                place == null ? null : place.getName(),
+                place == null ? null : place.getContact(),
+                place == null ? null : place.getPersonName())));
+    }
+
+
     private Claim loadPendingClaim(String claimId, String staffId) {
         Claim c = claims.findById(claimId)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Claim not found"));

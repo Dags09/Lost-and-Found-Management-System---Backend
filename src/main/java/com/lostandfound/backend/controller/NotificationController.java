@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
-/** Every logged-in user sees only their own notifications. */
+
 @RestController
 @RequestMapping("/v1/notifications")
 public class NotificationController {
@@ -26,7 +26,7 @@ public class NotificationController {
         return service.list((String) authentication.getPrincipal(), page, size);
     }
 
-    // For the red badge on the bell icon.
+
     @GetMapping("/unread-count")
     public Map<String, Long> unreadCount(Authentication authentication) {
         return Map.of("count", service.unreadCount((String) authentication.getPrincipal()));

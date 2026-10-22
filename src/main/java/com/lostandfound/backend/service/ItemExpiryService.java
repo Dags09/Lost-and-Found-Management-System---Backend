@@ -14,13 +14,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
-/**
- * Closes old, unresolved reports on its own (OPEN -> EXPIRED) so the lists do not grow forever:
- * found items after app.item-expiry.days, lost reports after app.item-expiry.lost-days.
- * An item is skipped while it has a PENDING claim. Each item is expired in its own transaction, so one
- * failure never undoes the others, and the update re-checks the rules, so two app instances running
- * this at once cannot expire (or notify) the same item twice.
- */
 @Service
 public class ItemExpiryService {
 

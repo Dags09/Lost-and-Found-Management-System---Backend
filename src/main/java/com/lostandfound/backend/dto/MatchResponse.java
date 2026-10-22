@@ -11,7 +11,7 @@ import java.time.Instant;
  */
 public record MatchResponse(
         String id,
-        int score,                    // 0-100, higher means more alike
+        int score,
         MatchStatus status,
         Instant createdAt,
         ItemPublicResponse foundItem

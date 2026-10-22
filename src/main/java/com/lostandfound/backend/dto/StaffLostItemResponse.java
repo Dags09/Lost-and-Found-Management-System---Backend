@@ -8,7 +8,7 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 
-/** What staff see for a lost report: the item, its private marks, and how to reach the owner. */
+
 public record StaffLostItemResponse(
         String id,
         String name,

@@ -3,7 +3,7 @@ package com.lostandfound.backend.dto;
 import com.lostandfound.backend.models.enumRoleStatusTypes.Role;
 import jakarta.validation.constraints.*;
 
-/** An Admin creates a staff account. No student ID */
+
 public record StaffCreateRequest(
         @NotBlank String firstName,
         @NotBlank String lastName,

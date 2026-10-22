@@ -6,7 +6,7 @@ import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
 import com.lostandfound.backend.service.StaffLostItemService;
 import org.springframework.web.bind.annotation.*;
 
-/** Staff only: /v1/moderation/** is limited to Moderator and Admin in SecurityConfig. */
+
 @RestController
 @RequestMapping("/v1/moderation/lost-items")
 public class ModerationLostItemController {

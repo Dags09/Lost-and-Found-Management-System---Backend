@@ -21,7 +21,7 @@ public class DropOrClaimed {
     @NotBlank(message = "Required contact number who to be claimed")
     private String contact;
 
-    // The person the item is handed to at this place (e.g. the teacher). Shown only after approval.
+
     @Column(name = "person_name")
     private String personName;
 

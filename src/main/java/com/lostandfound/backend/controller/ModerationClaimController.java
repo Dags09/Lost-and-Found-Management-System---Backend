@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/** Staff only: /v1/moderation/** is limited to Moderator and Admin in SecurityConfig. */
+
 @RestController
 @RequestMapping("/v1/moderation/claims")
 public class ModerationClaimController {

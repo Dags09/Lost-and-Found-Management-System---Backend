@@ -17,6 +17,6 @@ public record LostItemRequest(
         @NotBlank String color,
         @NotBlank String brand,
         @NotBlank String distinguishingMarks,
-        @NotBlank String locationName,          // where you think you lost it
+        @NotBlank String locationName,
         @NotNull @PastOrPresent LocalDate dateOccurred
 ) {}

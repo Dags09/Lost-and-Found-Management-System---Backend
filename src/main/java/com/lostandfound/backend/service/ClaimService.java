@@ -12,6 +12,9 @@ import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
 import com.lostandfound.backend.repository.ClaimRepository;
 import com.lostandfound.backend.repository.DropLocationRepository;
 import com.lostandfound.backend.repository.ItemRepository;
+import com.lostandfound.backend.mail.ClaimEmailEvent;
+import com.lostandfound.backend.repository.UserRepository;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,10 +36,15 @@ public class ClaimService {
     private final ImageStorageService imageStorage;
     private final DropLocationRepository dropLocations;
     private final NotificationService notifications;
+    private final UserRepository users;
+    private final ApplicationEventPublisher events;
 
     public ClaimService(ClaimRepository claims, ItemRepository items,
                         ImageStorageService imageStorage, DropLocationRepository dropLocations,
-                        NotificationService notifications) {
+                        NotificationService notifications,
+                        UserRepository users, ApplicationEventPublisher events) {
+        this.users = users;
+        this.events = events;
         this.claims = claims;
         this.items = items;
         this.imageStorage = imageStorage;
@@ -76,14 +84,17 @@ public class ClaimService {
         c.setProofImageId(imageId);
         Claim saved = claims.saveAndFlush(c);
 
-        // Tell the finder someone claimed their item. No claimant details: the proof is for staff only.
+
         notifications.claimUpdate(item.getReporterId(), "CLAIM_SUBMITTED",
                 "Someone submitted a claim for \"" + item.getName() + "\". Staff will review it.",
                 itemId, null);
+
+        users.findById(claimantId).ifPresent(u -> events.publishEvent(new ClaimEmailEvent(
+                ClaimEmailEvent.Kind.SUBMITTED, u.getEmail(), u.getFirstName(), item.getName(),
+                saved.getId(), saved.getCreatedAt(), null, null, null, null)));
         return ClaimResponse.from(saved);
     }
 
-    /** The claimant can see their own proof photo; Moderators/Admins can see any. Others get 404. */
     @Transactional(readOnly = true)
     public ImageFile getProofImage(String claimId, String userId, boolean isStaff) {
         Claim c = claims.findById(claimId)
@@ -99,7 +110,6 @@ public class ClaimService {
     public List<ClaimResponse> listMine(String claimantId) {
         List<Claim> mine = claims.findByClaimantIdOrderByCreatedAtDesc(claimantId);
 
-        // Only approved claims get to see where the item is: look those items up in one go.
         List<String> approvedItemIds = mine.stream()
                 .filter(c -> c.getStatus() == ClaimStatus.APPROVED)
                 .map(Claim::getItemId)

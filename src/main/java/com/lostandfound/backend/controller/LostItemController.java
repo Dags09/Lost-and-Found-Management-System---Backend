@@ -17,7 +17,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-/** "I lost something". Every route works only on the caller's own reports. */
 @RestController
 @RequestMapping("/v1/lost-items")
 public class LostItemController {
@@ -53,7 +52,6 @@ public class LostItemController {
         service.delete(id, (String) authentication.getPrincipal());
     }
 
-    // Up to 3 photos of what you lost. Private: only you and staff can load them.
     @PostMapping(value = "/{id}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public MyItemResponse addImage(@PathVariable String id, Authentication authentication,
@@ -67,7 +65,6 @@ public class LostItemController {
         return service.removeImage(id, (String) authentication.getPrincipal(), position);
     }
 
-    // The URLs in a lost report's "images" point here. Send the Bearer token with the request.
     @GetMapping("/{id}/images/{position}")
     public ResponseEntity<byte[]> image(@PathVariable String id, @PathVariable int position,
                                         Authentication authentication) {
@@ -81,13 +78,11 @@ public class LostItemController {
                 .body(img.getData());
     }
 
-    // Found items that may be this lost item, best first (public view only: claim one to get it).
     @GetMapping("/{id}/matches")
     public List<MatchResponse> matches(@PathVariable String id, Authentication authentication) {
         return matching.listForLost(id, (String) authentication.getPrincipal());
     }
 
-    // "That's not mine."
     @PostMapping("/{id}/matches/{matchId}/dismiss")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void dismiss(@PathVariable String id, @PathVariable String matchId, Authentication authentication) {

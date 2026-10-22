@@ -21,13 +21,13 @@ public class DropLocationController {
         this.service = service;
     }
 
-    // Students: place names only, so a finder can pick where to leave the item.
+
     @GetMapping
     public List<DropLocationOption> list() {
         return service.listOptions();
     }
 
-    // Admin: place + person + contact, for managing the list.
+
     @GetMapping("/details")
     @PreAuthorize("hasRole('Admin')")
     public List<DropOrClaimed> details() {

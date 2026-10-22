@@ -37,7 +37,6 @@ public class ClaimController {
         return service.listMine((String) authentication.getPrincipal());
     }
 
-    // Proof photos are private: only the claimant or staff may load them (send the Bearer token).
     @GetMapping("/claims/{claimId}/proof")
     public ResponseEntity<byte[]> proof(@PathVariable String claimId, Authentication authentication) {
         boolean staff = authentication.getAuthorities().stream()
