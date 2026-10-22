@@ -3,18 +3,24 @@ package com.lostandfound.backend.service;
 import com.lostandfound.backend.dto.ClaimResponse;
 import com.lostandfound.backend.exception.ApiException;
 import com.lostandfound.backend.models.Claim;
+import com.lostandfound.backend.models.DropOrClaimed;
 import com.lostandfound.backend.models.ImageFile;
 import com.lostandfound.backend.models.Items;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
 import com.lostandfound.backend.repository.ClaimRepository;
+import com.lostandfound.backend.repository.DropLocationRepository;
 import com.lostandfound.backend.repository.ItemRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.lostandfound.backend.models.enumRoleStatusTypes.Purpose;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 @Service
 public class ClaimService {
@@ -24,11 +30,14 @@ public class ClaimService {
     private final ClaimRepository claims;
     private final ItemRepository items;
     private final ImageStorageService imageStorage;
+    private final DropLocationRepository dropLocations;
 
-    public ClaimService(ClaimRepository claims, ItemRepository items, ImageStorageService imageStorage) {
+    public ClaimService(ClaimRepository claims, ItemRepository items,
+                        ImageStorageService imageStorage, DropLocationRepository dropLocations) {
         this.claims = claims;
         this.items = items;
         this.imageStorage = imageStorage;
+        this.dropLocations = dropLocations;
     }
 
     @Transactional
@@ -52,7 +61,7 @@ public class ClaimService {
 
         // 2. Save the proof photo (into PostgreSQL) and the claim in ONE transaction:
         //    if anything fails, both roll back, so no orphan photo is left behind.
-        String imageId = imageStorage.save(proofImage, ImageFile.Purpose.PROOF);
+        String imageId = imageStorage.save(proofImage, Purpose.PROOF);
 
         Claim c = new Claim();
         c.setItemId(itemId);
@@ -71,13 +80,33 @@ public class ClaimService {
             throw new ApiException(HttpStatus.NOT_FOUND, "Image not found");
         if (c.getProofImageId() == null)
             throw new ApiException(HttpStatus.NOT_FOUND, "Image not found");
-        return imageStorage.get(c.getProofImageId(), ImageFile.Purpose.PROOF);
+        return imageStorage.get(c.getProofImageId(), Purpose.PROOF);
     }
 
+    @Transactional(readOnly = true)
     public List<ClaimResponse> listMine(String claimantId) {
-        return claims.findByClaimantIdOrderByCreatedAtDesc(claimantId)
-                .stream()
-                .map(ClaimResponse::from)
+        List<Claim> mine = claims.findByClaimantIdOrderByCreatedAtDesc(claimantId);
+
+        // Only approved claims get to see where the item is: look those items up in one go.
+        List<String> approvedItemIds = mine.stream()
+                .filter(c -> c.getStatus() == ClaimStatus.APPROVED)
+                .map(Claim::getItemId)
+                .toList();
+        Map<String, DropOrClaimed> dropOffByItem = new HashMap<>();
+        if (!approvedItemIds.isEmpty()) {
+            List<Items> approvedItems = items.findAllById(approvedItemIds);
+            Map<String, DropOrClaimed> places = new HashMap<>();
+            dropLocations.findAllById(approvedItems.stream()
+                            .map(Items::getDropLocationId).filter(Objects::nonNull).distinct().toList())
+                    .forEach(d -> places.put(d.getId(), d));
+            approvedItems.forEach(i -> {
+                DropOrClaimed d = places.get(i.getDropLocationId());
+                if (d != null) dropOffByItem.put(i.getId(), d);
+            });
+        }
+
+        return mine.stream()
+                .map(c -> ClaimResponse.from(c, dropOffByItem.get(c.getItemId())))
                 .toList();
     }
 }

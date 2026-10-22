@@ -1,5 +1,6 @@
 package com.lostandfound.backend.controller;
 
+import com.lostandfound.backend.dto.DropLocationOption;
 import com.lostandfound.backend.dto.DropLocationRequest;
 import com.lostandfound.backend.models.DropOrClaimed;
 import com.lostandfound.backend.service.DropLocationService;
@@ -20,9 +21,17 @@ public class DropLocationController {
         this.service = service;
     }
 
+    // Students: place names only, so a finder can pick where to leave the item.
     @GetMapping
-    public List<DropOrClaimed> list() {
-        return service.list();
+    public List<DropLocationOption> list() {
+        return service.listOptions();
+    }
+
+    // Admin: place + person + contact, for managing the list.
+    @GetMapping("/details")
+    @PreAuthorize("hasRole('Admin')")
+    public List<DropOrClaimed> details() {
+        return service.listDetails();
     }
 
     @PostMapping

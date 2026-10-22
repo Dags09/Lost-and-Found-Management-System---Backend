@@ -12,7 +12,7 @@ public interface UserRepository extends JpaRepository<Users, String> {
     Optional<Users> findByEmail(String email);
     boolean existsByEmail(String email);
     boolean existsByPhoneNum(String phoneNum);
-    boolean existsByStudentId(Integer studentId);
+    boolean existsByStudentId(String studentId);
 
     @Query("select u.role from Users u where u.id = :id")
     Optional<Role> findRoleById(@Param("id") String id);

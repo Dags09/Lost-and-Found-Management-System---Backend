@@ -1,5 +1,6 @@
 package com.lostandfound.backend.service;
 
+import com.lostandfound.backend.dto.DropLocationOption;
 import com.lostandfound.backend.dto.DropLocationRequest;
 import com.lostandfound.backend.exception.ApiException;
 import com.lostandfound.backend.models.DropOrClaimed;
@@ -21,8 +22,14 @@ public class DropLocationService {
         this.items = items;
     }
 
-    public List<DropOrClaimed> list() {
+    /** Full details (place, person, contact): Admin screens only. */
+    public List<DropOrClaimed> listDetails() {
         return locations.findAll();
+    }
+
+    /** Place names only: safe to show to every logged-in student. */
+    public List<DropLocationOption> listOptions() {
+        return locations.findAll().stream().map(DropLocationOption::from).toList();
     }
 
     public DropOrClaimed create(DropLocationRequest req) {
@@ -31,6 +38,7 @@ public class DropLocationService {
             throw new ApiException(HttpStatus.CONFLICT, "Drop-off location already exists");
         DropOrClaimed d = new DropOrClaimed();
         d.setName(name);
+        d.setPersonName(req.personName().trim());
         d.setContact(req.contact().trim());
         return locations.save(d);
     }
@@ -42,6 +50,7 @@ public class DropLocationService {
         if (!d.getName().equalsIgnoreCase(name) && locations.existsByNameIgnoreCase(name))
             throw new ApiException(HttpStatus.CONFLICT, "Drop-off location already exists");
         d.setName(name);
+        d.setPersonName(req.personName().trim());
         d.setContact(req.contact().trim());
         return locations.save(d);
     }

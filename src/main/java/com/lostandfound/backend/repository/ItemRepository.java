@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,23 +18,29 @@ public interface ItemRepository extends JpaRepository<Items, String> {
     boolean existsByCategoryId(String categoryId);
     boolean existsByDropLocationId(String dropLocationId);
 
+    /**
+     * Flips an item OPEN -> CLAIMED in one database step. Returns 1 if it did, 0 if the item
+     * was no longer OPEN (so two staff approving at the same moment cannot both win).
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Items i set i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.CLAIMED, "
+            + "i.updatedAt = :now where i.id = :id and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN")
+    int markClaimedIfOpen(@Param("id") String id, @Param("now") java.time.Instant now);
+
     /** Public listing without a search phrase: open items, newest first. */
     @Query(value = """
             SELECT * FROM items i
             WHERE i.status = 'OPEN'
               AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))
-              AND (CAST(:dropLocationId AS varchar) IS NULL OR i.drop_location_id = CAST(:dropLocationId AS varchar))
             ORDER BY i.created_at DESC
             """,
             countQuery = """
             SELECT count(*) FROM items i
             WHERE i.status = 'OPEN'
               AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))
-              AND (CAST(:dropLocationId AS varchar) IS NULL OR i.drop_location_id = CAST(:dropLocationId AS varchar))
             """,
             nativeQuery = true)
     Page<Items> browseOpen(@Param("categoryId") String categoryId,
-                           @Param("dropLocationId") String dropLocationId,
                            Pageable pageable);
 
     /**
@@ -42,23 +49,25 @@ public interface ItemRepository extends JpaRepository<Items, String> {
      * to_tsquery expression such as "black | wallet", built by ItemService.
      */
     @Query(value = """
-            SELECT * FROM items i
-            WHERE i.status = 'OPEN'
-              AND i.search_vector @@ to_tsquery('english', :tsQuery)
-              AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))
-              AND (CAST(:dropLocationId AS varchar) IS NULL OR i.drop_location_id = CAST(:dropLocationId AS varchar))
-            ORDER BY ts_rank(i.search_vector, to_tsquery('english', :tsQuery)) DESC, i.created_at DESC
-            """,
+        SELECT * FROM items i
+        WHERE i.status = 'OPEN'
+          AND (i.search_vector @@ to_tsquery('english', :tsQuery)
+               OR word_similarity(CAST(:phrase AS text), i.name) > 0.4)
+          AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))
+        ORDER BY (ts_rank(i.search_vector, to_tsquery('english', :tsQuery))
+                  + word_similarity(CAST(:phrase AS text), i.name)) DESC,
+                 i.created_at DESC
+        """,
             countQuery = """
-            SELECT count(*) FROM items i
-            WHERE i.status = 'OPEN'
-              AND i.search_vector @@ to_tsquery('english', :tsQuery)
-              AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))
-              AND (CAST(:dropLocationId AS varchar) IS NULL OR i.drop_location_id = CAST(:dropLocationId AS varchar))
-            """,
+        SELECT count(*) FROM items i
+        WHERE i.status = 'OPEN'
+          AND (i.search_vector @@ to_tsquery('english', :tsQuery)
+               OR word_similarity(CAST(:phrase AS text), i.name) > 0.4)
+          AND (CAST(:categoryId AS varchar) IS NULL OR i.category_id = CAST(:categoryId AS varchar))
+        """,
             nativeQuery = true)
     Page<Items> searchOpen(@Param("tsQuery") String tsQuery,
+                           @Param("phrase") String phrase,
                            @Param("categoryId") String categoryId,
-                           @Param("dropLocationId") String dropLocationId,
                            Pageable pageable);
 }

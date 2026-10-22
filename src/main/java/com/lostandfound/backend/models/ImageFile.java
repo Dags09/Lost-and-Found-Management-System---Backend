@@ -1,5 +1,6 @@
 package com.lostandfound.backend.models;
 
+import com.lostandfound.backend.models.enumRoleStatusTypes.Purpose;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -21,7 +22,7 @@ import java.time.Instant;
 @Table(name = "images")
 public class ImageFile {
 
-    public enum Purpose { ITEM, PROOF }
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)

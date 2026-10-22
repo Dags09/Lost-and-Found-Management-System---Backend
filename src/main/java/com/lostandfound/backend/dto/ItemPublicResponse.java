@@ -22,6 +22,7 @@ public record ItemPublicResponse(
         ItemStatus status,
         Instant createdAt,
         List<ItemImageResponse> images
+
 ) {
     public static ItemPublicResponse from(Items i) {
         return new ItemPublicResponse(

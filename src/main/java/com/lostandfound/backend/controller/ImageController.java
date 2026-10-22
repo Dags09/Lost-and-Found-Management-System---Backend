@@ -1,7 +1,7 @@
 package com.lostandfound.backend.controller;
 
 import com.lostandfound.backend.models.ImageFile;
-import com.lostandfound.backend.models.ImageFile.Purpose;
+import com.lostandfound.backend.models.enumRoleStatusTypes.Purpose;
 import com.lostandfound.backend.service.ImageStorageService;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;

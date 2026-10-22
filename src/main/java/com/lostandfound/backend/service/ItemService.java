@@ -6,12 +6,12 @@ import com.lostandfound.backend.dto.ItemCreateRequest;
 import com.lostandfound.backend.dto.ItemPublicResponse;
 import com.lostandfound.backend.dto.MyItemResponse;
 import com.lostandfound.backend.exception.ApiException;
-import com.lostandfound.backend.models.ImageFile;
 import com.lostandfound.backend.models.ItemImage;
 import com.lostandfound.backend.models.Items;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus;
 import com.lostandfound.backend.models.enumRoleStatusTypes.ItemType;
+import com.lostandfound.backend.models.enumRoleStatusTypes.Purpose;
 import com.lostandfound.backend.repository.CategoryRepository;
 import com.lostandfound.backend.repository.ClaimRepository;
 import com.lostandfound.backend.repository.DropLocationRepository;
@@ -79,19 +79,20 @@ public class ItemService {
         imageStorage.deleteAll(imageIds);    // now nothing points at the images any more
     }
 
-    public PageResponse<ItemPublicResponse> search(String q, String categoryId,
-                                                   String dropLocationId, int page, int size) {
+    public PageResponse<ItemPublicResponse> search(String q, String categoryId, int page, int size) {
         int safePage = Math.max(page, 0);
         int safeSize = Math.min(Math.max(size, 1), 50);
         String category = (categoryId == null || categoryId.isBlank()) ? null : categoryId;
-        String dropLocation = (dropLocationId == null || dropLocationId.isBlank()) ? null : dropLocationId;
         PageRequest pageable = PageRequest.of(safePage, safeSize);
 
-        // With words: full-text search, best match first. Without: newest first.
-        String tsQuery = toTsQuery(q);
+        // With words: prefix + fuzzy search, best match first. Without: newest first.
+        List<String> words = words(q);
+        String tsQuery = toTsQuery(words);
+        String phrase = String.join(" ", words);
+
         Page<Items> result = tsQuery != null
-                ? items.searchOpen(tsQuery, category, dropLocation, pageable)
-                : items.browseOpen(category, dropLocation, pageable);
+                ? items.searchOpen(tsQuery, phrase, category, pageable)
+                : items.browseOpen(category, pageable);
 
         List<ItemPublicResponse> content = result.getContent().stream()
                 .map(ItemPublicResponse::from)
@@ -101,12 +102,20 @@ public class ItemService {
     }
 
     /** "black  wallet!" -> "black | wallet" (match ANY word). Null when nothing searchable is left. */
-    private static String toTsQuery(String q) {
-        if (q == null || q.isBlank()) return null;
-        String joined = Arrays.stream(q.trim().split("[^\\p{L}\\p{N}]+"))
+    private static final int MAX_WORDS = 8;
+
+    private static List<String> words(String q) {
+        if (q == null || q.isBlank()) return List.of();
+        return Arrays.stream(q.trim().toLowerCase().split("[^\\p{L}\\p{N}]+"))
                 .filter(w -> !w.isEmpty())
-                .collect(Collectors.joining(" | "));
-        return joined.isEmpty() ? null : joined;
+                .limit(MAX_WORDS)
+                .toList();
+    }
+
+    /** "black wall" -> "black:* | wall:*"  (each word matches as a prefix, ANY word counts). */
+    private static String toTsQuery(List<String> words) {
+        return words.isEmpty() ? null
+                : words.stream().map(w -> w + ":*").collect(Collectors.joining(" | "));
     }
 
     public ItemPublicResponse getPublic(String id) {
@@ -127,7 +136,7 @@ public class ItemService {
         Items i = findOwnedOpenItem(id, userId);
         if (i.getImages().size() >= MAX_IMAGES)
             throw new ApiException(HttpStatus.CONFLICT, "An item can have at most " + MAX_IMAGES + " images");
-        String imageId = imageStorage.save(file, ImageFile.Purpose.ITEM);
+        String imageId = imageStorage.save(file, Purpose.ITEM);
         i.getImages().add(new ItemImage(imageId, i.getImages().size()));
         return MyItemResponse.from(items.save(i));
     }
@@ -141,9 +150,9 @@ public class ItemService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Image not found"));
         i.getImages().remove(target);
         for (int n = 0; n < i.getImages().size(); n++)
-            i.getImages().get(n).setPosition(n);          // keep positions 0,1,2 with no gaps
+            i.getImages().get(n).setPosition(n);
         Items saved = items.saveAndFlush(i);
-        imageStorage.delete(target.getImageId());         // after the reference is gone
+        imageStorage.delete(target.getImageId());
         return MyItemResponse.from(saved);
     }
 

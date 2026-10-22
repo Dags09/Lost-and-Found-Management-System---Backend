@@ -2,7 +2,7 @@ package com.lostandfound.backend.service;
 
 import com.lostandfound.backend.exception.ApiException;
 import com.lostandfound.backend.models.ImageFile;
-import com.lostandfound.backend.models.ImageFile.Purpose;
+import com.lostandfound.backend.models.enumRoleStatusTypes.Purpose;
 import com.lostandfound.backend.repository.ImageFileRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

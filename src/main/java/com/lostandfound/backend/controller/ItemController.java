@@ -35,10 +35,9 @@ public class ItemController {
     public PageResponse<ItemPublicResponse> list(
             @RequestParam(required = false) String q,
             @RequestParam(required = false) String categoryId,
-            @RequestParam(required = false) String dropLocationId,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return service.search(q, categoryId, dropLocationId, page, size);
+        return service.search(q, categoryId, page, size);
     }
 
     @GetMapping("/mine")
