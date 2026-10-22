@@ -29,13 +29,16 @@ public class ClaimReviewService {
     private final ItemRepository items;
     private final UserRepository users;
     private final DropLocationRepository dropLocations;
+    private final NotificationService notifications;
 
     public ClaimReviewService(ClaimRepository claims, ItemRepository items,
-                              UserRepository users, DropLocationRepository dropLocations) {
+                              UserRepository users, DropLocationRepository dropLocations,
+                              NotificationService notifications) {
         this.claims = claims;
         this.items = items;
         this.users = users;
         this.dropLocations = dropLocations;
+        this.notifications = notifications;
     }
 
     /** The review queue, oldest first. Three bulk lookups, not one per claim. */
@@ -58,9 +61,25 @@ public class ClaimReviewService {
         Instant now = Instant.now();
         finish(c, ClaimStatus.APPROVED, staffId, clean(note), now);
 
+        Items item = items.findById(c.getItemId()).orElse(null);
+        String itemName = item == null ? "the item" : item.getName();
+
+        // Tell the owner, and tell the finder their item found its owner.
+        notifications.claimUpdate(c.getClaimantId(), "CLAIM_APPROVED",
+                "Your claim for \"" + itemName + "\" was approved. Open it to see where to collect the item.",
+                c.getItemId(), c.getId());
+        if (item != null)
+            notifications.claimUpdate(item.getReporterId(), "ITEM_CLAIMED",
+                    "The owner of \"" + itemName + "\" has been found. Thank you for reporting it!",
+                    c.getItemId(), null);
+
         for (Claim other : claims.findByItemIdAndStatus(c.getItemId(), ClaimStatus.PENDING)) {
-            if (!other.getId().equals(c.getId()))
+            if (!other.getId().equals(c.getId())) {
                 finish(other, ClaimStatus.REJECTED, staffId, "Another claim for this item was approved", now);
+                notifications.claimUpdate(other.getClaimantId(), "CLAIM_REJECTED",
+                        "Your claim for \"" + itemName + "\" was not approved: another claim for this item was approved.",
+                        other.getItemId(), other.getId());
+            }
         }
         return toStaffResponses(List.of(c)).get(0);
     }
@@ -73,6 +92,11 @@ public class ClaimReviewService {
             throw new ApiException(HttpStatus.BAD_REQUEST, "Give a reason for rejecting this claim");
         Claim c = loadPendingClaim(claimId, staffId);
         finish(c, ClaimStatus.REJECTED, staffId, reason, Instant.now());
+
+        String itemName = items.findById(c.getItemId()).map(Items::getName).orElse("the item");
+        notifications.claimUpdate(c.getClaimantId(), "CLAIM_REJECTED",
+                "Your claim for \"" + itemName + "\" was rejected: " + reason,
+                c.getItemId(), c.getId());
         return toStaffResponses(List.of(c)).get(0);
     }
 

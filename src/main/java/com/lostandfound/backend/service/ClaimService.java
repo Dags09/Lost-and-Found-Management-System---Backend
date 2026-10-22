@@ -31,13 +31,16 @@ public class ClaimService {
     private final ItemRepository items;
     private final ImageStorageService imageStorage;
     private final DropLocationRepository dropLocations;
+    private final NotificationService notifications;
 
     public ClaimService(ClaimRepository claims, ItemRepository items,
-                        ImageStorageService imageStorage, DropLocationRepository dropLocations) {
+                        ImageStorageService imageStorage, DropLocationRepository dropLocations,
+                        NotificationService notifications) {
         this.claims = claims;
         this.items = items;
         this.imageStorage = imageStorage;
         this.dropLocations = dropLocations;
+        this.notifications = notifications;
     }
 
     @Transactional
@@ -68,7 +71,13 @@ public class ClaimService {
         c.setClaimantId(claimantId);
         c.setProofDescription(proofDescription.trim());
         c.setProofImageId(imageId);
-        return ClaimResponse.from(claims.saveAndFlush(c));
+        Claim saved = claims.saveAndFlush(c);
+
+        // Tell the finder someone claimed their item. No claimant details: the proof is for staff only.
+        notifications.claimUpdate(item.getReporterId(), "CLAIM_SUBMITTED",
+                "Someone submitted a claim for \"" + item.getName() + "\". Staff will review it.",
+                itemId, null);
+        return ClaimResponse.from(saved);
     }
 
     /** The claimant can see their own proof photo; Moderators/Admins can see any. Others get 404. */
