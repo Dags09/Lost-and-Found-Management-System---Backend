@@ -14,4 +14,5 @@ public interface ImageFileRepository extends JpaRepository<ImageFile, String> {
     @Modifying
     @Query("delete from ImageFile i where i.id in :ids")
     int deleteByIds(@Param("ids") Collection<String> ids);
+
 }

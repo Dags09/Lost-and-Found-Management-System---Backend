@@ -58,6 +58,7 @@ public class AdminUserService {
         u.setEmail(email);
         u.setPhoneNum(req.phoneNum());
         u.setPassword(encoder.encode(req.password()));
+        u.setEmailVerified(true);   // created by an Admin, so the email is trusted
         u.setRole(req.role());
         return UserResponse.from(users.save(u));
     }

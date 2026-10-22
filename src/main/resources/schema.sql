@@ -165,3 +165,43 @@ CREATE UNIQUE INDEX IF NOT EXISTS ux_matches_pair ON matches (lost_item_id, foun
 
 ALTER TABLE images DROP CONSTRAINT IF EXISTS images_purpose_check;
 ALTER TABLE images ADD CONSTRAINT images_purpose_check CHECK (purpose IN ('ITEM','PROOF','LOST_ITEM'));
+
+-- ---------------------------------------------------------------
+-- Account security: email verification, login lockout, refresh tokens, one-time tokens
+-- ---------------------------------------------------------------
+
+-- email_verified: existing accounts are trusted (marked verified once), new accounts default to false.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified BOOLEAN;
+UPDATE users SET email_verified = TRUE WHERE email_verified IS NULL;
+ALTER TABLE users ALTER COLUMN email_verified SET DEFAULT FALSE;
+ALTER TABLE users ALTER COLUMN email_verified SET NOT NULL;
+
+ALTER TABLE users ADD COLUMN IF NOT EXISTS failed_login_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_until TIMESTAMPTZ;
+
+-- One row per issued refresh token (id = the JWT "jti"). Revoking a row logs that session out.
+-- family_id groups a chain of rotated tokens: reusing an old one revokes the whole family.
+CREATE TABLE IF NOT EXISTS refresh_tokens (
+                                              id          VARCHAR(36)  PRIMARY KEY,
+                                              user_id     VARCHAR(36)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                              family_id   VARCHAR(36)  NOT NULL,
+                                              expires_at  TIMESTAMPTZ  NOT NULL,
+                                              revoked_at  TIMESTAMPTZ,
+                                              created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_refresh_tokens_user    ON refresh_tokens (user_id);
+CREATE INDEX IF NOT EXISTS ix_refresh_tokens_family  ON refresh_tokens (family_id);
+CREATE INDEX IF NOT EXISTS ix_refresh_tokens_expires ON refresh_tokens (expires_at);
+
+-- One-time tokens sent by email (verify email, reset password). Only a SHA-256 hash is stored.
+CREATE TABLE IF NOT EXISTS auth_tokens (
+                                           id          VARCHAR(36)  PRIMARY KEY,
+                                           user_id     VARCHAR(36)  NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                                           type        VARCHAR(20)  NOT NULL CHECK (type IN ('VERIFY_EMAIL','RESET_PASSWORD')),
+                                           token_hash  VARCHAR(64)  NOT NULL UNIQUE,
+                                           expires_at  TIMESTAMPTZ  NOT NULL,
+                                           used_at     TIMESTAMPTZ,
+                                           created_at  TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ix_auth_tokens_user    ON auth_tokens (user_id, type);
+CREATE INDEX IF NOT EXISTS ix_auth_tokens_expires ON auth_tokens (expires_at);

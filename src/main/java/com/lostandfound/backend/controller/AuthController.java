@@ -32,7 +32,40 @@ public class AuthController {
     public AuthResponse refresh(@Valid @RequestBody RefreshRequest req) {
         return auth.refresh(req);
     }
-    
+
+    /** Ends the session of the given refresh token. */
+    @PostMapping("/logout")
+    public MessageResponse logout(@Valid @RequestBody LogoutRequest req) {
+        return auth.logout(req);
+    }
+
+    /** Ends every session of the logged-in user. */
+    @PostMapping("/logout-all")
+    public MessageResponse logoutAll(Authentication authentication) {
+        if (authentication == null) throw new com.lostandfound.backend.exception.ApiException(HttpStatus.UNAUTHORIZED, "Not logged in");
+        return auth.logoutAll((String) authentication.getPrincipal());
+    }
+
+    @PostMapping("/verify-email")
+    public MessageResponse verifyEmail(@Valid @RequestBody VerifyEmailRequest req) {
+        return auth.verifyEmail(req);
+    }
+
+    @PostMapping("/resend-verification")
+    public MessageResponse resendVerification(@Valid @RequestBody ResendVerificationRequest req) {
+        return auth.resendVerification(req);
+    }
+
+    @PostMapping("/forgot-password")
+    public MessageResponse forgotPassword(@Valid @RequestBody ForgotPasswordRequest req) {
+        return auth.forgotPassword(req);
+    }
+
+    @PostMapping("/reset-password")
+    public MessageResponse resetPassword(@Valid @RequestBody ResetPasswordRequest req) {
+        return auth.resetPassword(req);
+    }
+
     @GetMapping("/me")
     public UserResponse me(Authentication authentication) {
         if (authentication == null) throw new com.lostandfound.backend.exception.ApiException(HttpStatus.UNAUTHORIZED, "Not logged in");

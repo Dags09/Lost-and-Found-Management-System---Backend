@@ -12,6 +12,18 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+/**
+ * Creates one starter account per role (Student, Moderator, Admin) at startup.
+ *
+ * - OFF by default. Turn on with  app.seed.enabled=true  (or env APP_SEED_ENABLED=true).
+ * - Safe to run on every start: an account is skipped if its email already exists.
+ * - Passwords come from properties/env, never from code:
+ *     app.seed.admin-password, app.seed.moderator-password, app.seed.student-password
+ *   A role whose password is blank is skipped.
+ * - Passwords must follow the normal rule: 8 to 72 characters with at least one letter and one number.
+ * - Seeded accounts are marked as email-verified, so they can log in straight away.
+ * - Change the passwords after first login, and do not enable this in production with demo values.
+ */
 @Component
 @ConditionalOnProperty(name = "app.seed.enabled", havingValue = "true")
 public class UserSeeder implements ApplicationRunner {
@@ -61,6 +73,7 @@ public class UserSeeder implements ApplicationRunner {
         u.setPhoneNum(phone);
         u.setPassword(encoder.encode(rawPassword));
         u.setRole(role);
+        u.setEmailVerified(true);
         users.save(u);
         log.info("Seeded {} account: {}", role, email);
     }

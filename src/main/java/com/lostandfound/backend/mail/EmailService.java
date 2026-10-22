@@ -40,18 +40,33 @@ public class EmailService {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void onClaimEmail(ClaimEmailEvent e) {
-        if (e.to() == null || e.to().isBlank()) return;
+        send(e.to(), templates.subject(e), templates.html(e), "claim " + e.kind() + " " + e.claimId());
+    }
+
+    /** Account emails are sent straight away (in the background): the caller has already saved the token. */
+    @Async
+    public void sendVerificationEmail(String to, String name, String link, int hours) {
+        send(to, templates.verifyEmailSubject(), templates.verifyEmailHtml(name, link, hours), "verify-email");
+    }
+
+    @Async
+    public void sendPasswordResetEmail(String to, String name, String link, int minutes) {
+        send(to, templates.resetPasswordSubject(), templates.resetPasswordHtml(name, link, minutes), "password-reset");
+    }
+
+    private void send(String to, String subject, String html, String label) {
+        if (to == null || to.isBlank()) return;
         try {
             MimeMessage msg = mailSender.createMimeMessage();
             MimeMessageHelper h = new MimeMessageHelper(msg, false, StandardCharsets.UTF_8.name());
             h.setFrom(from);
-            h.setTo(e.to());
-            h.setSubject(templates.subject(e));
-            h.setText(templates.html(e), true);
+            h.setTo(to);
+            h.setSubject(subject);
+            h.setText(html, true);
             mailSender.send(msg);
-            log.info("Claim email {} sent for claim {}", e.kind(), e.claimId());
+            log.info("Email sent: {}", label);
         } catch (Exception ex) {
-            log.error("Could not send claim email {} for claim {}", e.kind(), e.claimId(), ex);
+            log.error("Could not send email: {}", label, ex);
         }
     }
 }

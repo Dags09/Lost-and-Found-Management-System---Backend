@@ -30,16 +30,22 @@ public class JwtService {
     }
 
     public String generateAccessToken(String userId, String role) {
-        return build(userId, role, accessKey, accessExpiresMs);
+        return build(userId, role, accessKey, accessExpiresMs, null);
     }
 
-    public String generateRefreshToken(String userId, String role) {
-        return build(userId, role, refreshKey, refreshExpiresMs);
+
+    public String generateRefreshToken(String userId, String role, String jti) {
+        return build(userId, role, refreshKey, refreshExpiresMs, jti);
     }
 
-    private String build(String userId, String role, SecretKey key, long ttlMs) {
+    public long getRefreshExpiresMs() {
+        return refreshExpiresMs;
+    }
+
+    private String build(String userId, String role, SecretKey key, long ttlMs, String jti) {
         Date now = new Date();
         return Jwts.builder()
+                .id(jti)
                 .subject(userId)
                 .claim("role", role)
                 .issuedAt(now)

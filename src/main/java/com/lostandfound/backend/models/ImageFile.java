@@ -14,10 +14,6 @@ import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 
-/**
- * One uploaded picture, stored as bytes inside PostgreSQL (bytea).
- * Kept in its own table so listing items never drags image bytes along.
- */
 @Entity
 @Table(name = "images")
 public class ImageFile {
@@ -42,7 +38,7 @@ public class ImageFile {
 
     // bytea. Do NOT use @Lob here: on PostgreSQL that maps to a "large object" (oid), not bytea.
     @JdbcTypeCode(SqlTypes.VARBINARY)
-    @Column(nullable = false, columnDefinition = "bytea")
+    @Column(columnDefinition = "bytea")
     private byte[] data;
 
     @Column(name = "created_at", insertable = false, updatable = false)

@@ -44,10 +44,16 @@ public class Users {
 
     @NotBlank(message = "Password is required")
     @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
-    @Size(min = 8, max = 12)
-    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,12}$",
-            message = "Password must be 8–12 characters with at least one letter and one number")
-    private String password;
+    private String password;   // BCrypt hash. The password rules live in @StrongPassword on the request DTOs.
+
+    @Column(name = "email_verified", nullable = false)
+    private boolean emailVerified = false;
+
+    @Column(name = "failed_login_attempts", nullable = false)
+    private int failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private Instant lockedUntil;
 
 
     @NotNull
@@ -84,6 +90,15 @@ public class Users {
 
     public Role getRole(){ return role; }
     public void setRole(Role role) { this.role = role; }
+
+    public boolean isEmailVerified(){ return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
+
+    public int getFailedLoginAttempts(){ return failedLoginAttempts; }
+    public void setFailedLoginAttempts(int n) { this.failedLoginAttempts = n; }
+
+    public Instant getLockedUntil(){ return lockedUntil; }
+    public void setLockedUntil(Instant lockedUntil) { this.lockedUntil = lockedUntil; }
 
     public Instant getCreatedAt(){ return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }

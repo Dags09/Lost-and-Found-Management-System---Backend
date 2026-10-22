@@ -55,7 +55,7 @@ public class SecurityConfig {
                                 writeError(res, 403, "You do not have permission to do this"))
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/v1/auth/me").authenticated()
+                        .requestMatchers("/v1/auth/me", "/v1/auth/logout-all").authenticated()
                         .requestMatchers("/v1/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/v1/images/**").permitAll()

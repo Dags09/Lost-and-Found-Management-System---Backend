@@ -8,45 +8,48 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Map;
+
 
 @Component
 public class AuthRateLimitFilter extends OncePerRequestFilter {
 
-    private static final int MAX_REQUESTS = 10;
-    private static final long WINDOW_MS = 60_000;
-    private static final Set<String> LIMITED =
-            Set.of("/v1/auth/login", "/v1/auth/register", "/v1/auth/refresh");
+    private static final long MINUTE = 60_000;
+    private static final long QUARTER_HOUR = 15 * MINUTE;
 
-    private static final class Window { long start; int count; }
+    private record Rule(int max, long windowMs) {}
 
-    private final ConcurrentHashMap<String, Window> hits = new ConcurrentHashMap<>();
+    private static final Map<String, Rule> RULES = Map.of(
+            "/v1/auth/login",               new Rule(20, MINUTE),
+            "/v1/auth/register",            new Rule(10, MINUTE),
+            "/v1/auth/refresh",             new Rule(30, MINUTE),
+            "/v1/auth/forgot-password",     new Rule(5, QUARTER_HOUR),
+            "/v1/auth/resend-verification", new Rule(5, QUARTER_HOUR),
+            "/v1/auth/reset-password",      new Rule(10, QUARTER_HOUR),
+            "/v1/auth/verify-email",        new Rule(20, QUARTER_HOUR));
+
+    private final RateLimiter limiter;
+
+    public AuthRateLimitFilter(RateLimiter limiter) {
+        this.limiter = limiter;
+    }
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest req) {
-        return !"POST".equals(req.getMethod()) || !LIMITED.contains(req.getRequestURI());
+        return !"POST".equals(req.getMethod()) || !RULES.containsKey(req.getRequestURI());
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res,
                                     FilterChain chain) throws ServletException, IOException {
-        long now = System.currentTimeMillis();
-        if (hits.size() > 10_000)                       // keep memory bounded
-            hits.values().removeIf(w -> now - w.start > WINDOW_MS);
-
-        Window w = hits.computeIfAbsent(req.getRemoteAddr() + req.getRequestURI(), k -> new Window());
-        boolean blocked;
-        synchronized (w) {
-            if (now - w.start > WINDOW_MS) { w.start = now; w.count = 0; }
-            blocked = ++w.count > MAX_REQUESTS;
-        }
-
-        if (blocked) {
+        Rule rule = RULES.get(req.getRequestURI());
+        long retryAfter = limiter.tryAcquire("auth:" + req.getRemoteAddr() + ":" + req.getRequestURI(),
+                rule.max(), rule.windowMs());
+        if (retryAfter > 0) {
             res.setStatus(429);
-            res.setHeader("Retry-After", "60");
+            res.setHeader("Retry-After", String.valueOf(retryAfter));
             res.setContentType("application/json");
-            res.getWriter().write("{\"error\":\"Too many attempts, try again in a minute\"}");
+            res.getWriter().write("{\"error\":\"Too many attempts, try again later\"}");
             return;
         }
         chain.doFilter(req, res);

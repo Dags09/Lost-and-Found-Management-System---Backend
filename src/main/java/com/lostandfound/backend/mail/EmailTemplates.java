@@ -152,6 +152,45 @@ final class EmailTemplates {
                         , reason));
     }
 
+    // ---- account emails (verify email, reset password) -------------------
+
+    String verifyEmailSubject() { return "Verify your email - " + platformName; }
+
+    String resetPasswordSubject() { return "Reset your password - " + platformName; }
+
+    String verifyEmailHtml(String name, String link, int hours) {
+        return page("Verify your email", "linear-gradient(135deg,#dbeafe 0%,#bfdbfe 100%)", "#3b82f6", "#2563eb",
+                "✉️", "Confirm your email", """
+            <p class="body-text">Hello <strong>%s</strong>,</p>
+            <p class="body-text">Welcome! Please confirm your email address to activate your account.</p>
+            %s
+            <p style="margin:0; color:#64748b; font-size:16px; line-height:1.6;">
+                This link works for %d hours. If you did not create an account, you can ignore this email.</p>
+            """.formatted(esc(name), button(link, "Verify my email"), hours));
+    }
+
+    String resetPasswordHtml(String name, String link, int minutes) {
+        return page("Reset your password", "linear-gradient(135deg,#fef3c7 0%,#fde68a 100%)", "#f59e0b", "#d97706",
+                "🔑", "Reset your password", """
+            <p class="body-text">Hello <strong>%s</strong>,</p>
+            <p class="body-text">We received a request to reset your password. Click the button to choose a new one.</p>
+            %s
+            <p style="margin:0; color:#64748b; font-size:16px; line-height:1.6;">
+                This link works for %d minutes and can be used once. If you did not ask for this,
+                you can ignore this email and your password will stay the same.</p>
+            """.formatted(esc(name), button(link, "Choose a new password"), minutes));
+    }
+
+    private static String button(String link, String label) {
+        String href = esc(link);
+        return "<p style=\"text-align:center; margin:32px 0;\"><a href=\"" + href + "\" "
+                + "style=\"display:inline-block; background:linear-gradient(135deg,#3b82f6 0%,#2563eb 100%); "
+                + "color:#ffffff; text-decoration:none; padding:14px 28px; border-radius:8px; "
+                + "font-weight:600; font-size:16px;\">" + esc(label) + "</a></p>"
+                + "<p style=\"margin:0 0 24px 0; color:#64748b; font-size:13px; word-break:break-all;\">"
+                + "Or copy this link into your browser:<br>" + href + "</p>";
+    }
+
     // ---- building blocks -------------------------------------------------
 
     private String page(String title, String bannerGrad, String bannerBorder, String bannerColor,
