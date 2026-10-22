@@ -27,6 +27,34 @@ public interface ItemRepository extends JpaRepository<Items, String> {
             + "i.updatedAt = :now where i.id = :id and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN")
     int markClaimedIfOpen(@Param("id") String id, @Param("now") java.time.Instant now);
 
+    /**
+     * Ids of FOUND items that are still OPEN, older than {@code cutoff}, and have no PENDING claim
+     * (an item someone is actively claiming is never expired). Oldest first; pass a page to cap the batch.
+     */
+    @Query("select i.id from Items i where i.type = com.lostandfound.backend.models.enumRoleStatusTypes.ItemType.FOUND "
+            + "and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN "
+            + "and i.createdAt < :cutoff "
+            + "and not exists (select 1 from Claim c where c.itemId = i.id "
+            + "and c.status = com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus.PENDING) "
+            + "order by i.createdAt asc")
+    List<String> findExpirableIds(@Param("cutoff") java.time.Instant cutoff, Pageable pageable);
+
+    /**
+     * Flips one item OPEN -> EXPIRED in a single database step, re-checking every condition so a claim
+     * that arrives between the lookup and the update wins. Returns 1 if it expired, 0 if not.
+     */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Items i set i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.EXPIRED, "
+            + "i.updatedAt = :now where i.id = :id "
+            + "and i.type = com.lostandfound.backend.models.enumRoleStatusTypes.ItemType.FOUND "
+            + "and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN "
+            + "and i.createdAt < :cutoff "
+            + "and not exists (select 1 from Claim c where c.itemId = i.id "
+            + "and c.status = com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus.PENDING)")
+    int markExpiredIfStale(@Param("id") String id,
+                           @Param("cutoff") java.time.Instant cutoff,
+                           @Param("now") java.time.Instant now);
+
     /** Public listing without a search phrase: open items, newest first. */
     @Query(value = """
             SELECT * FROM items i
