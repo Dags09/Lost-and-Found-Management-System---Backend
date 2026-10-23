@@ -22,9 +22,12 @@ public interface ItemRepository extends JpaRepository<Items, String> {
     List<Items> findByStatusOrderByCreatedAtDesc(ItemStatus status);
     List<Items> findByReporterIdOrderByCreatedAtDesc(String reporterId);
     List<Items> findByReporterIdAndTypeOrderByCreatedAtDesc(String reporterId, ItemType type);
-    /** Open items of one type and category: the pool a new report is compared against. */
+    /**
+     * Active items of one type and category (OPEN, or MATCHED for a lost report): the pool a new
+     * report is compared against.
+     */
     @Query("select i from Items i where i.type = :type "
-            + "and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN "
+            + "and i.status in (com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN, com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.MATCHED) "
             + "and i.categoryId = :categoryId order by i.createdAt desc")
     List<Items> findOpenByTypeAndCategory(@Param("type") ItemType type,
                                           @Param("categoryId") String categoryId,
@@ -65,7 +68,7 @@ public interface ItemRepository extends JpaRepository<Items, String> {
      * (an item someone is actively claiming is never expired). Oldest first; pass a page to cap the batch.
      */
     @Query("select i.id from Items i where i.type = :type "
-            + "and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN "
+            + "and i.status in (com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN, com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.MATCHED) "
             + "and i.createdAt < :cutoff "
             + "and not exists (select 1 from Claim c where c.itemId = i.id "
             + "and c.status = com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus.PENDING) "
@@ -81,7 +84,7 @@ public interface ItemRepository extends JpaRepository<Items, String> {
     @Query("update Items i set i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.EXPIRED, "
             + "i.updatedAt = :now where i.id = :id "
             + "and i.type = :type "
-            + "and i.status = com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN "
+            + "and i.status in (com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.OPEN, com.lostandfound.backend.models.enumRoleStatusTypes.ItemStatus.MATCHED) "
             + "and i.createdAt < :cutoff "
             + "and not exists (select 1 from Claim c where c.itemId = i.id "
             + "and c.status = com.lostandfound.backend.models.enumRoleStatusTypes.ClaimStatus.PENDING)")

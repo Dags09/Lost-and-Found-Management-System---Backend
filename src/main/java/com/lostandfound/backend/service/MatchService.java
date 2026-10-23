@@ -25,7 +25,7 @@ import java.util.stream.Collectors;
 
 
 /**
- * Suggests which found item may be a lost one. It only SUGGESTS: the owner still submits a claim
+ * Suggests which found item may be a lost one. A lost report with a live suggestion is marked MATCHED. It only SUGGESTS: the owner still submits a claim
  * with proof and staff still approve it, so a wrong suggestion cannot hand anyone an item.
  */
 @Service
@@ -67,6 +67,7 @@ public class MatchService {
             if (matches.existsByLostItemIdAndFoundItemId(lost.getId(), found.getId())) continue;
 
             save(lost, found, score);
+            markMatched(lost);
             notifications.matchFound(lost.getReporterId(),
                     "A found item may be yours: \"" + found.getName() + "\". Open your lost report to review it.",
                     lost.getId(), found.getId());
@@ -78,7 +79,7 @@ public class MatchService {
     /** A lost report was made (or edited): compare it with every open found item in its category. */
     @Transactional
     public int matchNewLost(Items lost) {
-        if (lost.getType() != ItemType.LOST || lost.getStatus() != ItemStatus.OPEN
+        if (lost.getType() != ItemType.LOST || !isActiveLost(lost)
                 || lost.getCategoryId() == null) return 0;
 
         record Scored(Items found, int score) {}
@@ -95,6 +96,7 @@ public class MatchService {
 
         List<Scored> top = good.size() > MAX_PER_LOST ? good.subList(0, MAX_PER_LOST) : good;
         for (Scored s : top) save(lost, s.found(), s.score());
+        if (!top.isEmpty()) markMatched(lost);
 
         if (!top.isEmpty())
             notifications.matchFound(lost.getReporterId(),
@@ -133,6 +135,7 @@ public class MatchService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Suggestion not found"));
         m.setStatus(MatchStatus.DISMISSED);
         matches.save(m);
+        refreshLostStatus(lostItemId);   // last suggestion gone: back to OPEN
     }
 
     /**
@@ -151,7 +154,7 @@ public class MatchService {
 
         for (Match m : open) {
             Items lost = lostById.get(m.getLostItemId());
-            if (lost != null && claimantId.equals(lost.getReporterId()) && lost.getStatus() == ItemStatus.OPEN) {
+            if (lost != null && claimantId.equals(lost.getReporterId()) && isActiveLost(lost)) {
                 lost.setStatus(ItemStatus.CLOSED);
                 items.save(lost);
                 m.setStatus(MatchStatus.CONFIRMED);
@@ -160,9 +163,59 @@ public class MatchService {
             }
         }
         matches.saveAll(open);
+
+        // Other owners lose this suggestion; if it was their last one, their report goes back to OPEN.
+        open.stream().filter(m -> m.getStatus() == MatchStatus.DISMISSED)
+                .map(Match::getLostItemId).distinct().forEach(this::refreshLostStatus);
+    }
+
+    /**
+     * Called when a found item stops being available without being claimed (deleted or expired).
+     * Its suggestions are dismissed and every lost report that was waiting only on it goes back to OPEN.
+     */
+    @Transactional
+    public void releaseFoundItem(String foundItemId) {
+        List<Match> open = matches.findByFoundItemIdAndStatus(foundItemId, MatchStatus.SUGGESTED);
+        if (open.isEmpty()) return;
+        open.forEach(m -> m.setStatus(MatchStatus.DISMISSED));
+        matches.saveAll(open);
+        open.stream().map(Match::getLostItemId).distinct().forEach(this::refreshLostStatus);
     }
 
     // ---- helpers -------------------------------------------------------
+
+    /** A lost report that is still being looked after: OPEN, or MATCHED (it has suggestions). */
+    private static boolean isActiveLost(Items lost) {
+        return lost.getStatus() == ItemStatus.OPEN || lost.getStatus() == ItemStatus.MATCHED;
+    }
+
+    /** OPEN -> MATCHED when a suggestion is stored for the report. */
+    private void markMatched(Items lost) {
+        if (lost.getStatus() == ItemStatus.OPEN) {
+            lost.setStatus(ItemStatus.MATCHED);
+            items.save(lost);
+        }
+    }
+
+    /**
+     * Keeps a lost report's status in step with its suggestions: MATCHED while at least one
+     * suggestion points at a found item that is still OPEN, otherwise OPEN. Closed, claimed and
+     * expired reports are left alone.
+     */
+    private void refreshLostStatus(String lostItemId) {
+        items.findById(lostItemId).filter(MatchService::isActiveLost).ifPresent(lost -> {
+            List<String> foundIds = matches
+                    .findByLostItemIdAndStatusOrderByScoreDesc(lostItemId, MatchStatus.SUGGESTED)
+                    .stream().map(Match::getFoundItemId).toList();
+            boolean hasLive = !foundIds.isEmpty() && items.findAllById(foundIds).stream()
+                    .anyMatch(f -> f.getStatus() == ItemStatus.OPEN);
+            ItemStatus wanted = hasLive ? ItemStatus.MATCHED : ItemStatus.OPEN;
+            if (lost.getStatus() != wanted) {
+                lost.setStatus(wanted);
+                items.save(lost);
+            }
+        });
+    }
 
     /** Stores the suggestion. The score is saved as 0 to 1. */
     private void save(Items lost, Items found, int score) {

@@ -98,6 +98,7 @@ public class ItemService {
         claims.findByItemId(id).forEach(c -> imageIds.add(c.getProofImageId()));
         imageIds.removeIf(java.util.Objects::isNull);
 
+        matching.releaseFoundItem(id);       // lost reports waiting on this item go back to OPEN
         items.delete(i);
         items.flush();                       // the database cascades the claims/item_images rows away
         imageStorage.deleteAll(imageIds);    // now nothing points at the images any more

@@ -26,6 +26,7 @@ public class ItemExpiryService {
 
     private final ItemRepository items;
     private final NotificationService notifications;
+    private final MatchService matching;
     private final TransactionTemplate tx;
 
     @Value("${app.item-expiry.days:90}")
@@ -37,9 +38,11 @@ public class ItemExpiryService {
     @Value("${app.item-expiry.batch-size:200}")
     private int batchSize;
 
-    public ItemExpiryService(ItemRepository items, NotificationService notifications, TransactionTemplate tx) {
+    public ItemExpiryService(ItemRepository items, NotificationService notifications, MatchService matching,
+                             TransactionTemplate tx) {
         this.items = items;
         this.notifications = notifications;
+        this.matching = matching;
         this.tx = tx;
     }
 
@@ -92,6 +95,7 @@ public class ItemExpiryService {
      */
     private boolean expireOne(String id, ItemType type, long days, Instant cutoff, Instant now) {
         if (items.markExpiredIfStale(id, type, cutoff, now) != 1) return false;
+        if (type == ItemType.FOUND) matching.releaseFoundItem(id);   // lost reports waiting on it go back to OPEN
         items.findById(id).ifPresent(i -> notifications.claimUpdate(
                 i.getReporterId(), "ITEM_EXPIRED",
                 type == ItemType.FOUND

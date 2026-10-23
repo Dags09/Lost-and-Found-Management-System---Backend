@@ -151,14 +151,14 @@ public class LostItemService {
         }
     }
 
-    /** 404 missing (or not a lost report), 403 not yours, 409 not open any more. */
+    /** 404 missing (or not a lost report), 403 not yours, 409 not open any more (OPEN and MATCHED both count as open). */
     private Items findOwnedOpenLost(String id, String userId) {
         Items i = items.findById(id)
                 .filter(x -> x.getType() == ItemType.LOST)
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Lost report not found"));
         if (!userId.equals(i.getReporterId()))
             throw new ApiException(HttpStatus.FORBIDDEN, "You can only change your own reports");
-        if (i.getStatus() != ItemStatus.OPEN)
+        if (i.getStatus() != ItemStatus.OPEN && i.getStatus() != ItemStatus.MATCHED)
             throw new ApiException(HttpStatus.CONFLICT, "Only open reports can be changed");
         return i;
     }
