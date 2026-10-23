@@ -13,7 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
-/** Student endpoints for claims: submit one for an item, list your own, load a proof photo. */
+/** Student endpoints for claims: submit one for an item, cancel a pending one, list your own, load a proof photo. */
 @RestController
 @RequestMapping("/v1")
 public class ClaimController {
@@ -32,6 +32,12 @@ public class ClaimController {
                                 @RequestParam("proofDescription") String proofDescription,
                                 @RequestParam("proofImage") MultipartFile proofImage) {
         return service.submit(itemId, (String) authentication.getPrincipal(), proofDescription, proofImage);
+    }
+
+    /** POST /v1/claims/{claimId}/cancel : withdraw your own claim. Only works while it is PENDING. */
+    @PostMapping("/claims/{claimId}/cancel")
+    public ClaimResponse cancel(@PathVariable String claimId, Authentication authentication) {
+        return service.cancel(claimId, (String) authentication.getPrincipal());
     }
 
     /** GET /v1/claims/mine : the logged-in student's own claims, newest first. */

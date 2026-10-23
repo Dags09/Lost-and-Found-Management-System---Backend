@@ -141,10 +141,12 @@ public class ClaimReviewService {
     }
 
 
-    /** 404 if missing, 409 if already reviewed, 403 if staff try to review their own claim. */
+    /** 404 if missing, 409 if already reviewed or cancelled, 403 if staff try to review their own claim. */
     private Claim loadPendingClaim(String claimId, String staffId) {
-        Claim c = claims.findById(claimId)
+        Claim c = claims.findByIdForUpdate(claimId)   // row lock: a student cancelling at the same time waits
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Claim not found"));
+        if (c.getStatus() == ClaimStatus.CANCELLED)
+            throw new ApiException(HttpStatus.CONFLICT, "The student cancelled this claim");
         if (c.getStatus() != ClaimStatus.PENDING)
             throw new ApiException(HttpStatus.CONFLICT, "This claim was already reviewed");
         if (staffId.equals(c.getClaimantId()))

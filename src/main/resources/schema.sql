@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS claims (
                                       proof_description  TEXT        NOT NULL,
                                       proof_image_id     VARCHAR(36) REFERENCES images(id),
                                       status             VARCHAR(10) NOT NULL DEFAULT 'PENDING'
-                                          CHECK (status IN ('PENDING','APPROVED','REJECTED')),
+                                          CHECK (status IN ('PENDING','APPROVED','REJECTED','CANCELLED')),
                                       review_note        TEXT,
                                       reviewed_at        TIMESTAMPTZ,
                                       reviewed_by        VARCHAR(36) REFERENCES users(id),
@@ -205,3 +205,8 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
 );
 CREATE INDEX IF NOT EXISTS ix_auth_tokens_user    ON auth_tokens (user_id, type);
 CREATE INDEX IF NOT EXISTS ix_auth_tokens_expires ON auth_tokens (expires_at);
+
+-- Students can cancel their own PENDING claim. Older databases still have the 3-value check, so replace it.
+ALTER TABLE claims DROP CONSTRAINT IF EXISTS claims_status_check;
+ALTER TABLE claims ADD CONSTRAINT claims_status_check
+    CHECK (status IN ('PENDING','APPROVED','REJECTED','CANCELLED'));

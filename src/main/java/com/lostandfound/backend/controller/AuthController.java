@@ -4,6 +4,7 @@ import com.lostandfound.backend.dto.*;
 import com.lostandfound.backend.service.AuthService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -82,5 +83,16 @@ public class AuthController {
     public UserResponse me(Authentication authentication) {
         if (authentication == null) throw new com.lostandfound.backend.exception.ApiException(HttpStatus.UNAUTHORIZED, "Not logged in");
         return auth.me((String) authentication.getPrincipal());
+    }
+
+    /**
+     * PUT /v1/auth/me : a Moderator or Admin edits their own first name, last name and phone number.
+     * Students cannot edit their profile (403); a Moderator or Admin edits a student's profile instead.
+     */
+    @PutMapping("/me")
+    @PreAuthorize("hasAnyRole('Moderator','Admin')")
+    public UserResponse updateMe(Authentication authentication, @Valid @RequestBody UpdateProfileRequest req) {
+        if (authentication == null) throw new com.lostandfound.backend.exception.ApiException(HttpStatus.UNAUTHORIZED, "Not logged in");
+        return auth.updateProfile((String) authentication.getPrincipal(), req);
     }
 }

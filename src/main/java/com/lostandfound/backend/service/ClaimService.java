@@ -26,7 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/** Student side of claims: submit a claim with proof, view own claims, load the proof photo. */
+/** Student side of claims: submit a claim with proof, cancel a pending one, view own claims, load the proof photo. */
 @Service
 public class ClaimService {
 
@@ -100,6 +100,24 @@ public class ClaimService {
                 ClaimEmailEvent.Kind.SUBMITTED, u.getEmail(), u.getFirstName(), item.getName(),
                 saved.getId(), saved.getCreatedAt(), null, null, null, null)));
         return ClaimResponse.from(saved);
+    }
+
+    /**
+     * The claimant withdraws their own claim while it is still PENDING.
+     * Someone else's claim gives 404 (as if it did not exist). An already reviewed or cancelled claim
+     * gives 409. The row is locked so staff approving the same claim at the same moment cannot clash.
+     * The proof photo is kept, so the claim still shows in "my claims" as CANCELLED. The student may
+     * submit a new claim for the item afterwards, because the one-pending-claim rule only counts PENDING.
+     */
+    @Transactional
+    public ClaimResponse cancel(String claimId, String claimantId) {
+        Claim c = claims.findByIdForUpdate(claimId)
+                .filter(x -> claimantId.equals(x.getClaimantId()))
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Claim not found"));
+        if (c.getStatus() != ClaimStatus.PENDING)
+            throw new ApiException(HttpStatus.CONFLICT, "Only a pending claim can be cancelled");
+        c.setStatus(ClaimStatus.CANCELLED);
+        return ClaimResponse.from(claims.save(c));
     }
 
     /**

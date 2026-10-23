@@ -201,6 +201,24 @@ public class AuthService {
                 .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
     }
 
+    /**
+     * Updates the logged-in staff member's own first name, last name and phone number (the controller only
+     * lets Moderators and Admins in). The phone number must not belong to another account. Email and
+     * student ID cannot be changed here.
+     */
+    @Transactional
+    public UserResponse updateProfile(String userId, UpdateProfileRequest req) {
+        Users u = users.findById(userId)
+                .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "User not found"));
+        String phone = req.phoneNum();
+        if (!phone.equals(u.getPhoneNum()) && users.existsByPhoneNum(phone))
+            throw new ApiException(HttpStatus.CONFLICT, "That phone number is already used by another account");
+        u.setFirstName(req.firstName().trim());
+        u.setLastName(req.lastName().trim());
+        u.setPhoneNum(phone);
+        return UserResponse.from(users.save(u));
+    }
+
     // ---- password reset --------------------------------------------------
 
     /**
